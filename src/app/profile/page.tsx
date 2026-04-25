@@ -7,9 +7,10 @@ export default async function ProfilePage() {
   const data = await getAppData();
   const currentUserEntries = data.leaderboard.filter((row) => row.isCurrentUser);
   const pickHistory = [...data.recentResults, ...data.todayMatches];
-  const pendingPicks = data.todayMatches.filter((match) => match.status === "open");
+  const pendingPicks = data.predictionMatches;
   const totalPoints = currentUserEntries.reduce((total, row) => total + row.points, 0);
   const totalExact = currentUserEntries.reduce((total, row) => total + row.exact, 0);
+  const userDisplayName = data.userDisplayName ?? "Player";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:py-8">
@@ -18,26 +19,30 @@ export default async function ProfilePage() {
       </div>
       <div className="mb-6">
         <p className="text-xs font-bold uppercase text-emerald-800">
-          Alex Chen
+          {userDisplayName}
         </p>
-        <h1 className="mt-2 text-3xl font-black text-zinc-950">My picks</h1>
+        <h1 className="mt-2 text-3xl font-black text-zinc-950">
+          Meine Tipps
+        </h1>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Surface className="p-4">
-          <div className="text-sm font-semibold text-zinc-500">Total points</div>
+          <div className="text-sm font-semibold text-zinc-500">Punkte</div>
           <div className="mt-2 text-4xl font-black text-zinc-950">
             {totalPoints}
           </div>
         </Surface>
         <Surface className="p-4">
-          <div className="text-sm font-semibold text-zinc-500">Exact hits</div>
+          <div className="text-sm font-semibold text-zinc-500">
+            Exakte Treffer
+          </div>
           <div className="mt-2 text-4xl font-black text-emerald-800">
             {totalExact}
           </div>
         </Surface>
         <Surface className="p-4">
-          <div className="text-sm font-semibold text-zinc-500">Pending</div>
+          <div className="text-sm font-semibold text-zinc-500">Offen</div>
           <div className="mt-2 text-4xl font-black text-yellow-700">
             {pendingPicks.length * data.predictionEntries.length}
           </div>
@@ -46,7 +51,7 @@ export default async function ProfilePage() {
 
       <section className="mt-7 space-y-3">
         <h2 className="text-sm font-bold uppercase text-zinc-500">
-          My Tippreihen
+          Meine Tippreihen
         </h2>
         <Surface>
           {currentUserEntries.map((entry, index) => (
@@ -60,7 +65,7 @@ export default async function ProfilePage() {
                     {entry.entryLabel ?? entry.name}
                   </div>
                   <div className="text-xs font-semibold text-zinc-500">
-                    {entry.name} · {entry.total} picks
+                    {entry.name} · {entry.total} Tipps
                   </div>
                 </div>
                 <div className="text-right">
@@ -68,7 +73,7 @@ export default async function ProfilePage() {
                     {entry.points}
                   </div>
                   <div className="text-xs font-bold uppercase text-zinc-500">
-                    pts
+                    Pkt
                   </div>
                 </div>
               </div>
@@ -79,10 +84,10 @@ export default async function ProfilePage() {
 
       <section className="mt-7 space-y-3">
         <h2 className="text-sm font-bold uppercase text-zinc-500">
-          Pick history
+          Tippverlauf
         </h2>
         <MatchList
-          emptyMessage="No picks yet."
+          emptyMessage="Noch keine Tipps."
           matches={pickHistory}
           showPrediction
           showResult

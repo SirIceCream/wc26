@@ -1,16 +1,19 @@
 import type { Match, PredictionEntry } from "@/lib/tournament-data";
-import { getTeamLabel, getTeamShortLabel } from "@/lib/tournament-data";
-import { savePrediction } from "@/lib/predictions/actions";
+import { getStageLabel, getTeamLabel, getTeamShortLabel } from "@/lib/tournament-data";
 import { formatViennaMatchTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { LockCountdown } from "./lock-countdown";
+import { PredictionFormClient } from "./prediction-form-client";
 import { PointsChip, StatusChip, Surface, TeamFlag, TeamLine } from "./primitives";
 
 function statusLabel(match: Match) {
   if (match.status === "live") return "Live";
-  if (match.status === "done") return "FT";
-  if (match.status === "open") return match.prediction ? "Saved" : "Open";
-  if (match.status === "locked") return "Locked";
-  return "Upcoming";
+  if (match.status === "done") return "Ende";
+  if (match.status === "open") {
+    return match.prediction ? "Gespeichert" : "Offen";
+  }
+  if (match.status === "locked") return "Gesperrt";
+  return "Demnächst";
 }
 
 function statusKind(match: Match) {
@@ -49,7 +52,7 @@ export function MatchRow({
       <div className="text-xs font-semibold text-zinc-500">
         {matchTime.date ? <div>{matchTime.date}</div> : null}
         <div className="text-sm font-bold text-zinc-950">{matchTime.time}</div>
-        <div>{match.stage}</div>
+        <div>{getStageLabel(match.stage)}</div>
         {match.venue ? <div className="truncate">{match.venue}</div> : null}
       </div>
 
@@ -80,7 +83,7 @@ export function MatchRow({
 
         {showPrediction && match.prediction ? (
           <div className="text-xs font-semibold text-zinc-500">
-            You{" "}
+            Du{" "}
             <span className="text-zinc-950">
               {match.prediction.home}:{match.prediction.away}
             </span>
@@ -96,7 +99,7 @@ export function MatchRow({
 }
 
 export function MatchList({
-  emptyMessage = "No matches yet.",
+  emptyMessage = "Noch keine Spiele.",
   matches,
   showPrediction,
   showResult,
@@ -132,44 +135,6 @@ export function MatchList({
   );
 }
 
-function ScoreInputs({
-  disabled,
-  match,
-}: {
-  disabled?: boolean;
-  match: Match;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <input
-        className="h-11 w-11 rounded-lg border border-zinc-300 bg-white text-center text-2xl font-black text-zinc-950 outline-none focus:border-emerald-800 disabled:border-dashed disabled:bg-zinc-50 disabled:text-zinc-400"
-        defaultValue={match.prediction?.home ?? ""}
-        disabled={disabled}
-        inputMode="numeric"
-        max={99}
-        min={0}
-        name="homeScore"
-        placeholder="-"
-        required
-        type="number"
-      />
-      <span className="text-lg font-black text-zinc-400">:</span>
-      <input
-        className="h-11 w-11 rounded-lg border border-zinc-300 bg-white text-center text-2xl font-black text-zinc-950 outline-none focus:border-emerald-800 disabled:border-dashed disabled:bg-zinc-50 disabled:text-zinc-400"
-        defaultValue={match.prediction?.away ?? ""}
-        disabled={disabled}
-        inputMode="numeric"
-        max={99}
-        min={0}
-        name="awayScore"
-        placeholder="-"
-        required
-        type="number"
-      />
-    </div>
-  );
-}
-
 function ScorePlaceholder() {
   return (
     <div className="flex items-center gap-2">
@@ -184,6 +149,13 @@ function ScorePlaceholder() {
   );
 }
 
+function getEntryPrediction(match: Match, entry: PredictionEntry) {
+  return (
+    match.predictionsByRow?.[entry.predictionRow] ??
+    (entry.predictionRow === 1 ? match.prediction : null)
+  );
+}
+
 function EntryPredictionRow({
   canEdit,
   entry,
@@ -195,8 +167,17 @@ function EntryPredictionRow({
   leagueId?: string | null;
   match: Match;
 }) {
+  const prediction = getEntryPrediction(match, entry);
+
   return (
-    <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+    <div
+      className={cn(
+        "rounded-lg border p-3",
+        prediction
+          ? "border-emerald-200 bg-emerald-50/50"
+          : "border-zinc-200 bg-zinc-50",
+      )}
+    >
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <div className="text-xs font-black uppercase text-zinc-950">
@@ -213,27 +194,14 @@ function EntryPredictionRow({
         ) : null}
       </div>
 
-      {canEdit ? (
-        <form action={savePrediction} className="flex flex-col items-center gap-3">
-          <input name="leagueId" type="hidden" value={leagueId ?? ""} />
-          <input name="matchId" type="hidden" value={match.id} />
-          <input name="entryId" type="hidden" value={entry.id} />
-          <ScoreInputs match={match} />
-          <button
-            className="rounded-lg bg-emerald-800 px-3 py-2 text-xs font-black text-white hover:bg-emerald-900"
-            type="submit"
-          >
-            Save pick
-          </button>
-        </form>
-      ) : (
-        <div className="flex flex-col items-center gap-2">
-          <ScoreInputs disabled match={match} />
-          <div className="text-[0.7rem] font-semibold text-zinc-500">
-            Preview only until Supabase is connected.
-          </div>
-        </div>
-      )}
+      <PredictionFormClient
+        canEdit={canEdit}
+        entry={entry}
+        key={`${match.id}-${entry.predictionRow}-${prediction?.home ?? "new"}-${prediction?.away ?? "new"}`}
+        leagueId={leagueId}
+        matchId={match.id}
+        prediction={prediction}
+      />
     </div>
   );
 }
@@ -249,7 +217,9 @@ export function PredictionCard({
   match: Match;
   predictionEntries?: PredictionEntry[];
 }) {
-  const canEdit = editable && leagueId && match.status === "open" && !match.score;
+  const canEdit = Boolean(
+    editable && leagueId && match.status === "open" && !match.score,
+  );
   const matchTime = getMatchTime(match);
   const showEntryRows = match.status === "open" && !match.score;
   const entries = predictionEntries?.length
@@ -258,23 +228,31 @@ export function PredictionCard({
         {
           id: "primary",
           label: "Tippreihe 1",
-          ownerName: "You",
+          ownerName: "Du",
+          predictionRow: 1,
           isAdditional: false,
         },
       ];
+  const primaryEntry =
+    entries.find((entry) => entry.predictionRow === 1) ?? entries[0];
+  const primaryPrediction = primaryEntry
+    ? getEntryPrediction(match, primaryEntry)
+    : null;
+  const additionalEntries = primaryEntry
+    ? entries.filter((entry) => entry.id !== primaryEntry.id)
+    : [];
 
   return (
     <Surface className="p-4">
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-100 pb-3">
+      <div className="border-b border-zinc-100 pb-3">
         <div className="text-sm font-semibold text-zinc-500">
-          {match.stage} · {matchTime.compact}
+          {getStageLabel(match.stage)} · {matchTime.compact}
           {match.venue ? (
             <div className="mt-1 text-xs font-medium text-zinc-400">
               {match.venue}
             </div>
           ) : null}
         </div>
-        <StatusChip kind={statusKind(match)}>{statusLabel(match)}</StatusChip>
       </div>
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 pt-5">
@@ -283,7 +261,7 @@ export function PredictionCard({
           <div className="text-sm font-bold text-zinc-950">
             {getTeamShortLabel(match.home)}
           </div>
-          <div className="hidden text-xs text-zinc-500 sm:block">
+          <div className="max-w-[6.5rem] break-words text-[0.68rem] font-semibold leading-tight text-zinc-500 sm:max-w-[9rem] sm:text-xs">
             {getTeamLabel(match.home)}
           </div>
         </div>
@@ -296,10 +274,19 @@ export function PredictionCard({
               </div>
               {match.prediction ? (
                 <div className="text-xs font-semibold text-zinc-500">
-                  You {match.prediction.home}:{match.prediction.away}
+                  Du {match.prediction.home}:{match.prediction.away}
                 </div>
               ) : null}
             </>
+          ) : showEntryRows && primaryEntry ? (
+            <PredictionFormClient
+              canEdit={canEdit}
+              entry={primaryEntry}
+              key={`${match.id}-${primaryEntry.predictionRow}-${primaryPrediction?.home ?? "new"}-${primaryPrediction?.away ?? "new"}`}
+              leagueId={leagueId}
+              matchId={match.id}
+              prediction={primaryPrediction}
+            />
           ) : (
             <ScorePlaceholder />
           )}
@@ -310,7 +297,7 @@ export function PredictionCard({
           <div className="text-sm font-bold text-zinc-950">
             {getTeamShortLabel(match.away)}
           </div>
-          <div className="hidden text-xs text-zinc-500 sm:block">
+          <div className="max-w-[6.5rem] break-words text-[0.68rem] font-semibold leading-tight text-zinc-500 sm:max-w-[9rem] sm:text-xs">
             {getTeamLabel(match.away)}
           </div>
         </div>
@@ -318,18 +305,16 @@ export function PredictionCard({
 
       {showEntryRows ? (
         <div className="mt-4 space-y-3 border-t border-zinc-100 pt-4">
-          {entries.map((entry) => (
+          {additionalEntries.map((entry) => (
             <EntryPredictionRow
-              canEdit={Boolean(canEdit)}
+              canEdit={canEdit}
               entry={entry}
               key={entry.id}
               leagueId={leagueId}
               match={match}
             />
           ))}
-          <div className="text-center text-xs font-bold text-amber-700">
-            {match.deadline ?? match.kickoff}
-          </div>
+          <LockCountdown fallback={match.deadline ?? match.kickoff} targetAt={match.kickoffAt} />
         </div>
       ) : null}
     </Surface>

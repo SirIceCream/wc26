@@ -3,6 +3,7 @@
 -- reserve tournament hotfixes/provider logs for app admins.
 
 alter table public.profiles enable row level security;
+alter table public.app_metadata enable row level security;
 alter table public.leagues enable row level security;
 alter table public.league_members enable row level security;
 alter table public.teams enable row level security;
@@ -61,6 +62,8 @@ drop policy if exists "profiles are visible to authenticated users" on public.pr
 drop policy if exists "users can insert their own profile" on public.profiles;
 drop policy if exists "users can update their own profile" on public.profiles;
 drop policy if exists "admins can update profiles" on public.profiles;
+drop policy if exists "anyone can read app metadata" on public.app_metadata;
+drop policy if exists "admins can manage app metadata" on public.app_metadata;
 drop policy if exists "members can read their leagues" on public.leagues;
 drop policy if exists "members can read their league memberships" on public.league_members;
 drop policy if exists "authenticated users can read teams" on public.teams;
@@ -106,6 +109,17 @@ on public.profiles for update
 to authenticated
 using (public.is_app_admin())
 with check (true);
+
+create policy "anyone can read app metadata"
+on public.app_metadata for select
+to anon, authenticated
+using (true);
+
+create policy "admins can manage app metadata"
+on public.app_metadata for all
+to authenticated
+using (public.is_app_admin())
+with check (public.is_app_admin());
 
 create policy "members can read their leagues"
 on public.leagues for select
@@ -192,6 +206,17 @@ to authenticated
 with check (
   user_id = auth.uid()
   and public.is_league_member(league_id)
+  and prediction_row in (1, 2)
+  and (
+    prediction_row = 1
+    or exists (
+      select 1
+      from public.league_members
+      where league_members.league_id = predictions.league_id
+        and league_members.user_id = auth.uid()
+        and league_members.uses_two_prediction_rows
+    )
+  )
   and exists (
     select 1
     from public.matches
@@ -208,6 +233,17 @@ to authenticated
 using (
   user_id = auth.uid()
   and public.is_league_member(league_id)
+  and prediction_row in (1, 2)
+  and (
+    prediction_row = 1
+    or exists (
+      select 1
+      from public.league_members
+      where league_members.league_id = predictions.league_id
+        and league_members.user_id = auth.uid()
+        and league_members.uses_two_prediction_rows
+    )
+  )
   and exists (
     select 1
     from public.matches
@@ -220,6 +256,17 @@ using (
 with check (
   user_id = auth.uid()
   and public.is_league_member(league_id)
+  and prediction_row in (1, 2)
+  and (
+    prediction_row = 1
+    or exists (
+      select 1
+      from public.league_members
+      where league_members.league_id = predictions.league_id
+        and league_members.user_id = auth.uid()
+        and league_members.uses_two_prediction_rows
+    )
+  )
   and exists (
     select 1
     from public.matches

@@ -35,10 +35,10 @@ export function TournamentProgressCard({
       <div className="mb-4 flex items-baseline justify-between gap-4">
         <div>
           <div className="text-xs font-bold uppercase text-zinc-500">
-            Tournament
+            Turnier
           </div>
           <div className="mt-1 text-sm font-semibold text-zinc-600">
-            Jun 11 - Jul 19
+            11. Juni - 19. Juli
           </div>
         </div>
         <div className="text-right">
@@ -86,10 +86,10 @@ export function TournamentProgressCard({
         })}
       </div>
 
-      <div className="grid grid-cols-3 border-t border-zinc-100 pt-3">
+      <div className="grid grid-cols-2 border-t border-zinc-100 pt-3">
         <div>
           <div className="text-[0.65rem] font-bold uppercase text-zinc-500">
-            Played
+            Gespielt
           </div>
           <div className="mt-1 flex items-center gap-1 text-lg font-black text-zinc-950">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-800">
@@ -101,17 +101,9 @@ export function TournamentProgressCard({
             </span>
           </div>
         </div>
-        <div className="text-center">
-          <div className="text-[0.65rem] font-bold uppercase text-zinc-500">
-            Open
-          </div>
-          <div className="mt-1 text-lg font-black text-zinc-950">
-            {progress.todayMatches}
-          </div>
-        </div>
         <div className="text-right">
           <div className="text-[0.65rem] font-bold uppercase text-zinc-500">
-            Next KO
+            KO-Phase
           </div>
           <div className="mt-1 text-lg font-black text-zinc-950">
             {progress.nextKnockoutDate}

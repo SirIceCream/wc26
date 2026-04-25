@@ -10,14 +10,16 @@ import { formatViennaMatchTime } from "@/lib/time";
 export default async function Home() {
   const data = await getAppData();
   const currentUserEntries = data.leaderboard.filter((row) => row.isCurrentUser);
-  const openPicks = data.todayMatches.filter((match) => match.status === "open");
+  const openPicks = data.predictionMatches;
   const nextLockMatch = openPicks[0] ?? data.upcomingMatches[0];
   const nextLockTime = nextLockMatch?.kickoffAt
     ? formatViennaMatchTime(nextLockMatch.kickoffAt).compact
     : nextLockMatch?.time;
+  const userDisplayName = data.userDisplayName ?? "Player";
+  const firstName = userDisplayName.split(" ")[0] ?? userDisplayName;
   const openPickLabel = openPicks.length
-    ? openPicks.map((match) => `${match.home}-${match.away}`).join(", ")
-    : "No open picks right now";
+    ? `${openPicks.length} Spiele sind aktuell tippbar.`
+    : "Aktuell sind keine Tipps offen.";
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:grid lg:grid-cols-[1fr_22rem] lg:py-8">
@@ -31,21 +33,23 @@ export default async function Home() {
                 The Usual Suspects · WC26
               </p>
               <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-                Hey Alex
+                Servus {firstName}
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-emerald-50">
-                The opening fixtures are ready. Pick the first scores before
-                kickoff and start the league from zero.
+                Alle bekannten Gruppenpaarungen sind freigeschaltet. Gib deine
+                Tipps ab, bevor die jeweiligen Spiele gesperrt werden.
               </p>
             </div>
             <div className="flex items-start justify-between gap-4 sm:justify-end">
-              <Avatar name="Alex Chen" />
+              <Avatar name={userDisplayName} />
               {nextLockMatch ? (
                 <div className="rounded-lg bg-yellow-200 px-4 py-3 text-yellow-950">
-                  <div className="text-xs font-bold uppercase">Next lock</div>
+                  <div className="text-xs font-bold uppercase">
+                    Nächste Tippabgabe bis
+                  </div>
                   <div className="mt-1 text-lg font-black">{nextLockTime}</div>
                   <div className="text-xs font-semibold">
-                    {nextLockMatch.home} vs {nextLockMatch.away}
+                    {nextLockMatch.home} gegen {nextLockMatch.away}
                   </div>
                 </div>
               ) : null}
@@ -60,13 +64,13 @@ export default async function Home() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-zinc-500">
-                  Your entries
+                  Deine Tippreihen
                 </div>
                 <div className="mt-1 text-3xl font-black text-zinc-950">
                   {currentUserEntries.length} Tippreihen
                 </div>
                 <div className="text-sm text-zinc-500">
-                  Each entry has its own picks and leaderboard row.
+                  Jede Tippreihe hat eigene Tipps und einen eigenen Rang.
                 </div>
               </div>
               <div className="grid gap-2 sm:min-w-72">
@@ -77,7 +81,7 @@ export default async function Home() {
                   >
                     <div className="flex h-10 w-10 flex-col items-center justify-center rounded-lg bg-white">
                       <div className="text-[0.6rem] font-bold uppercase text-zinc-500">
-                        Rank
+                        Rang
                       </div>
                       <div className="text-sm font-black text-zinc-950">
                         {entry.rank}
@@ -88,7 +92,7 @@ export default async function Home() {
                         {entry.entryLabel ?? entry.name}
                       </div>
                       <div className="text-xs font-semibold text-zinc-500">
-                        {entry.points} pts · {entry.total} picks
+                        {entry.points} Pkt · {entry.total} Tipps
                       </div>
                     </div>
                     {entry.isAdditionalEntry ? (
@@ -103,7 +107,7 @@ export default async function Home() {
                 className="hidden rounded-lg bg-zinc-950 px-4 py-2 text-sm font-bold text-white hover:bg-zinc-800 sm:inline-flex"
                 href="/leaderboard"
               >
-                Ranking
+                Rangliste
               </Link>
             </div>
           </Surface>
@@ -117,13 +121,13 @@ export default async function Home() {
             {openPicks.length}
           </div>
           <div>
-            <div className="font-black">Open picks</div>
+            <div className="font-black">Offene Tipps</div>
             <div className="mt-1 text-sm text-zinc-300">
               {openPickLabel}
             </div>
           </div>
           <span className="rounded-lg bg-yellow-200 px-4 py-2 text-center text-sm font-black text-yellow-950">
-            Predict
+            Tippen
           </span>
         </Link>
 
@@ -131,18 +135,18 @@ export default async function Home() {
           <SectionTitle
             action={
               <Link className="text-sm font-bold text-emerald-800" href="/fixtures">
-                See all
+                Alle anzeigen
               </Link>
             }
-            title="Opening fixtures"
+            title="Erste Spiele"
           />
           <MatchList matches={data.todayMatches} showPrediction />
         </section>
 
         <section className="space-y-3">
-          <SectionTitle title="Recent results" />
+          <SectionTitle title="Letzte Ergebnisse" />
           <MatchList
-            emptyMessage="No results yet. The tournament has not kicked off."
+            emptyMessage="Noch keine Ergebnisse. Das Turnier hat noch nicht begonnen."
             matches={data.recentResults.slice(0, 2)}
             showPrediction
             showResult
@@ -154,10 +158,10 @@ export default async function Home() {
         <SectionTitle
           action={
             <Link className="text-sm font-bold text-emerald-800" href="/leaderboard">
-              Full ranking
+              Ganze Rangliste
             </Link>
           }
-          title="Friends leaderboard"
+          title="Freundes-Rangliste"
         />
         <Surface>
           {data.leaderboard.slice(0, 5).map((row, index) => (

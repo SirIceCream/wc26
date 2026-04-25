@@ -1,5 +1,5 @@
 export const APP_TIME_ZONE = "Europe/Vienna";
-export const APP_TIME_ZONE_LABEL = "Vienna time";
+export const APP_TIME_ZONE_LABEL = "Wiener Zeit";
 
 export type MatchTimeParts = {
   compact: string;
@@ -20,9 +20,9 @@ export function formatViennaMatchTime(value: Date | string): MatchTimeParts {
 export function formatViennaDate(value: Date | string) {
   const date = typeof value === "string" ? new Date(value) : value;
 
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
+  return new Intl.DateTimeFormat("de-AT", {
+    day: "numeric",
+    month: "long",
     timeZone: APP_TIME_ZONE,
   }).format(date);
 }
@@ -30,7 +30,7 @@ export function formatViennaDate(value: Date | string) {
 export function formatViennaTime(value: Date | string) {
   const date = typeof value === "string" ? new Date(value) : value;
 
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("de-AT", {
     hour: "2-digit",
     hour12: false,
     minute: "2-digit",

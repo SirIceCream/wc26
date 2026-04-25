@@ -38,7 +38,7 @@ export function TeamFlag({
       )}
     >
       <Image
-        alt={`${team.name} flag`}
+        alt={`Flagge ${getTeamLabel(code)}`}
         className="h-full w-full object-cover"
         height={dimensions.height}
         src={`https://flagcdn.com/w80/${team.flagCode}.png`}

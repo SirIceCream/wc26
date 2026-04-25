@@ -27,6 +27,7 @@ export const DEFAULT_LEAGUE_SLUG = "the-usual-suspects";
 const DEFAULT_LEAGUE_NAME = "The Usual Suspects";
 
 type UserContext = {
+  displayName: string | null;
   leagueId: string | null;
   profileId: string | null;
   userEmail: string | null;
@@ -37,11 +38,13 @@ export type AppData = {
   hasAdditionalTippreihe: boolean;
   leagueId: string | null;
   leaderboard: LeaderboardRow[];
+  predictionMatches: Match[];
   predictionEntries: PredictionEntry[];
   recentResults: Match[];
   todayMatches: Match[];
   tournamentProgress: TournamentProgress;
   upcomingMatches: Match[];
+  userDisplayName: string | null;
   userEmail: string | null;
 };
 
@@ -55,12 +58,11 @@ export type TournamentProgress = {
   completedMatches: number;
   nextKnockoutDate: string;
   stages: TournamentStageProgress[];
-  todayMatches: number;
   totalMatches: number;
 };
 
 const tournamentStageTotals = [
-  { label: "Group", total: 72 },
+  { label: "Gruppe", total: 72 },
   { label: "R32", total: 16 },
   { label: "R16", total: 8 },
   { label: "QF", total: 4 },
@@ -68,15 +70,12 @@ const tournamentStageTotals = [
   { label: "F", total: 2 },
 ];
 
-function buildTournamentProgress(
-  completedMatches = 0,
-  todayMatches = OPENING_SLATE_MATCH_COUNT,
-): TournamentProgress {
+function buildTournamentProgress(completedMatches = 0): TournamentProgress {
   let remainingCompleted = completedMatches;
 
   return {
     completedMatches,
-    nextKnockoutDate: "Jun 28",
+    nextKnockoutDate: "28. Juni",
     stages: tournamentStageTotals.map((stage) => {
       const completed = Math.min(stage.total, Math.max(0, remainingCompleted));
       remainingCompleted -= completed;
@@ -86,7 +85,6 @@ function buildTournamentProgress(
         completed,
       };
     }),
-    todayMatches,
     totalMatches: tournamentStageTotals.reduce(
       (total, stage) => total + stage.total,
       0,
@@ -94,7 +92,10 @@ function buildTournamentProgress(
   };
 }
 
-function seedData(userEmail: string | null = null): AppData {
+function seedData(
+  userEmail: string | null = null,
+  userDisplayName = "Alex 1",
+): AppData {
   return {
     connected: false,
     hasAdditionalTippreihe: seedPredictionEntries.some(
@@ -102,11 +103,15 @@ function seedData(userEmail: string | null = null): AppData {
     ),
     leagueId: null,
     leaderboard: seedLeaderboard,
+    predictionMatches: [...seedTodayMatches, ...seedUpcomingMatches].filter(
+      (match) => match.status === "open",
+    ),
     predictionEntries: seedPredictionEntries,
     recentResults: seedRecentResults,
     todayMatches: seedTodayMatches,
-    tournamentProgress: buildTournamentProgress(0, seedTodayMatches.length),
+    tournamentProgress: buildTournamentProgress(0),
     upcomingMatches: seedUpcomingMatches,
+    userDisplayName,
     userEmail,
   };
 }
@@ -120,11 +125,24 @@ function displayNameFromUser(email?: string) {
   return email?.split("@")[0] || "Player";
 }
 
+function stringMetadata(
+  metadata: Record<string, unknown> | undefined,
+  key: string,
+) {
+  const value = metadata?.[key];
+
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 async function ensureUserContext(): Promise<UserContext> {
   const user = await getCurrentUser();
 
   if (!user || !isDatabaseConfigured()) {
     return {
+      displayName:
+        stringMetadata(user?.user_metadata, "display_name") ??
+        stringMetadata(user?.user_metadata, "full_name") ??
+        (user?.email ? displayNameFromUser(user.email) : null),
       leagueId: null,
       profileId: user?.id ?? null,
       userEmail: user?.email ?? null,
@@ -133,25 +151,39 @@ async function ensureUserContext(): Promise<UserContext> {
 
   const db = getDb();
   const email = user.email ?? null;
+  const metadata = user.user_metadata;
   const displayName =
-    typeof user.user_metadata?.full_name === "string"
-      ? user.user_metadata.full_name
-      : displayNameFromUser(email ?? undefined);
+    stringMetadata(metadata, "display_name") ??
+    stringMetadata(metadata, "full_name") ??
+    displayNameFromUser(email ?? undefined);
+  const fullName = stringMetadata(metadata, "full_name") ?? displayName;
+  const username =
+    stringMetadata(metadata, "username") ??
+    usernameFromUser(user.id, email ?? undefined);
+  const phoneNumber = stringMetadata(metadata, "phone_number");
+  const avatarUrl = stringMetadata(metadata, "avatar_url");
 
   await db
     .insert(profiles)
     .values({
       id: user.id,
       email,
-      username: usernameFromUser(user.id, email ?? undefined),
+      username,
+      fullName,
       displayName,
+      phoneNumber,
+      avatarUrl,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
       target: profiles.id,
       set: {
         email,
+        username,
+        fullName,
         displayName,
+        phoneNumber,
+        avatarUrl,
         updatedAt: new Date(),
       },
     });
@@ -174,6 +206,7 @@ async function ensureUserContext(): Promise<UserContext> {
 
   if (!league) {
     return {
+      displayName,
       leagueId: null,
       profileId: user.id,
       userEmail: email,
@@ -190,6 +223,7 @@ async function ensureUserContext(): Promise<UserContext> {
     .onConflictDoNothing();
 
   return {
+    displayName,
     leagueId: league.id,
     profileId: user.id,
     userEmail: email,
@@ -215,10 +249,19 @@ function inferStatus(match: {
 
 function mapMatch(
   match: typeof matches.$inferSelect,
-  prediction?: typeof predictions.$inferSelect,
+  matchPredictions: (typeof predictions.$inferSelect)[] = [],
 ): Match {
   const status = inferStatus(match);
   const viennaTime = formatViennaMatchTime(match.kickoffAt);
+  const predictionsByRow = Object.fromEntries(
+    matchPredictions.map((prediction) => [
+      prediction.predictionRow,
+      { home: prediction.homeScore, away: prediction.awayScore },
+    ]),
+  );
+  const primaryPrediction = matchPredictions.find(
+    (prediction) => prediction.predictionRow === 1,
+  );
 
   return {
     id: match.id,
@@ -229,14 +272,15 @@ function mapMatch(
     stage: match.groupName ?? match.stage,
     status,
     venue: match.venue ?? undefined,
-    deadline: status === "open" ? "Locks before kickoff" : undefined,
+    deadline: status === "open" ? "Sperrt vor Anpfiff" : undefined,
     score:
       match.homeScore !== null && match.awayScore !== null
         ? { home: match.homeScore, away: match.awayScore }
         : undefined,
-    prediction: prediction
-      ? { home: prediction.homeScore, away: prediction.awayScore }
+    prediction: primaryPrediction
+      ? { home: primaryPrediction.homeScore, away: primaryPrediction.awayScore }
       : null,
+    predictionsByRow,
   };
 }
 
@@ -273,13 +317,22 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     return null;
   }
 
-  const currentUserPredictions = new Map(
-    dbPredictions
-      .filter((prediction) => prediction.userId === context.profileId)
-      .map((prediction) => [prediction.matchId, prediction]),
-  );
+  const currentUserPredictionsByMatch = new Map<
+    string,
+    (typeof predictions.$inferSelect)[]
+  >();
+
+  for (const prediction of dbPredictions) {
+    if (prediction.userId !== context.profileId) continue;
+
+    const matchPredictions =
+      currentUserPredictionsByMatch.get(prediction.matchId) ?? [];
+    matchPredictions.push(prediction);
+    currentUserPredictionsByMatch.set(prediction.matchId, matchPredictions);
+  }
+
   const mappedMatches = dbMatches.map((match) =>
-    mapMatch(match, currentUserPredictions.get(match.id)),
+    mapMatch(match, currentUserPredictionsByMatch.get(match.id)),
   );
   const completedMatchCount = dbMatches.filter(
     (match) =>
@@ -291,6 +344,7 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     ? await db
         .select({
           userId: leagueMembers.userId,
+          usesTwoPredictionRows: leagueMembers.usesTwoPredictionRows,
           displayName: profiles.displayName,
         })
         .from(leagueMembers)
@@ -300,32 +354,38 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
 
   const matchById = new Map(mappedMatches.map((match) => [match.id, match]));
   const leaderboardRows = memberRows
-    .map((member) => {
-      const memberPredictions = dbPredictions.filter(
-        (prediction) => prediction.userId === member.userId,
-      );
-      const points = memberPredictions.reduce((total, prediction) => {
-        const match = matchById.get(prediction.matchId);
-        return total + (match ? scorePrediction(match, prediction) : 0);
-      }, 0);
-      const exact = points / 3;
+    .flatMap((member) => {
+      const predictionRows = member.usesTwoPredictionRows ? [1, 2] : [1];
 
-      return {
-        rank: 0,
-        previousRank: 0,
-        name:
-          member.userId === context.profileId
-            ? "You"
-            : member.displayName,
-        ownerName: member.displayName,
-        entryLabel: "Tippreihe 1",
-        hasAdditionalTippreihe: false,
-        isAdditionalEntry: false,
-        points,
-        exact,
-        total: memberPredictions.length,
-        isCurrentUser: member.userId === context.profileId,
-      };
+      return predictionRows.map((predictionRow) => {
+        const memberPredictions = dbPredictions.filter(
+          (prediction) =>
+            prediction.userId === member.userId &&
+            prediction.predictionRow === predictionRow,
+        );
+        const points = memberPredictions.reduce((total, prediction) => {
+          const match = matchById.get(prediction.matchId);
+          return total + (match ? scorePrediction(match, prediction) : 0);
+        }, 0);
+        const exact = points / 3;
+
+        return {
+          rank: 0,
+          previousRank: 0,
+          name:
+            member.userId === context.profileId
+              ? "You"
+              : member.displayName,
+          ownerName: member.displayName,
+          entryLabel: `Tippreihe ${predictionRow}`,
+          hasAdditionalTippreihe: member.usesTwoPredictionRows,
+          isAdditionalEntry: predictionRow === 2,
+          points,
+          exact,
+          total: memberPredictions.length,
+          isCurrentUser: member.userId === context.profileId,
+        };
+      });
     })
     .sort((a, b) => b.points - a.points || b.exact - a.exact)
     .map((row, index) => ({
@@ -335,32 +395,55 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     }));
 
   const incompleteMatches = mappedMatches.filter((match) => match.status !== "done");
+  const predictionMatches = mappedMatches.filter(
+    (match) => match.status === "open",
+  );
   const todayMatches = incompleteMatches.slice(0, OPENING_SLATE_MATCH_COUNT);
   const recentResults = mappedMatches.filter((match) => match.status === "done");
   const upcomingMatches = incompleteMatches.slice(OPENING_SLATE_MATCH_COUNT);
+  const currentMember = memberRows.find(
+    (member) => member.userId === context.profileId,
+  );
+  const currentUserHasTwoRows = Boolean(currentMember?.usesTwoPredictionRows);
+  const currentOwnerName =
+    currentMember?.displayName ??
+    context.displayName ??
+    context.userEmail?.split("@")[0] ??
+    "Player";
 
   return {
     connected: true,
-    hasAdditionalTippreihe: false,
+    hasAdditionalTippreihe: currentUserHasTwoRows,
     leagueId: league?.id ?? null,
     leaderboard: leaderboardRows,
+    predictionMatches,
     predictionEntries: [
       {
-        id: "primary",
+        id: "row-1",
         label: "Tippreihe 1",
-        ownerName: context.userEmail?.split("@")[0] ?? "Player",
+        ownerName: currentOwnerName,
+        predictionRow: 1,
         isAdditional: false,
       },
+      ...(currentUserHasTwoRows
+        ? [
+            {
+              id: "row-2",
+              label: "Tippreihe 2",
+              ownerName: currentOwnerName,
+              predictionRow: 2,
+              isAdditional: true,
+            },
+          ]
+        : []),
     ],
     recentResults,
     todayMatches: todayMatches.length
       ? todayMatches
       : mappedMatches.slice(0, OPENING_SLATE_MATCH_COUNT),
-    tournamentProgress: buildTournamentProgress(
-      completedMatchCount,
-      todayMatches.length || seedTodayMatches.length,
-    ),
+    tournamentProgress: buildTournamentProgress(completedMatchCount),
     upcomingMatches,
+    userDisplayName: currentOwnerName,
     userEmail: context.userEmail,
   };
 }
@@ -378,5 +461,5 @@ export async function getAppData(): Promise<AppData> {
     console.error("Falling back to seeded app data:", error);
   }
 
-  return seedData(context.userEmail);
+  return seedData(context.userEmail, context.displayName ?? "Alex 1");
 }

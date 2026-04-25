@@ -1,4 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
+  boolean,
+  check,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -13,9 +17,23 @@ export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey(),
   email: text("email").unique(),
   username: text("username").notNull().unique(),
+  fullName: text("full_name"),
   displayName: text("display_name").notNull(),
+  phoneNumber: text("phone_number"),
   avatarUrl: text("avatar_url"),
   appRole: text("app_role").default("user").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const appMetadata = pgTable("app_metadata", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  description: text("description"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -50,6 +68,9 @@ export const leagueMembers = pgTable(
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
     role: text("role").default("member").notNull(),
+    usesTwoPredictionRows: boolean("uses_two_prediction_rows")
+      .default(false)
+      .notNull(),
     joinedAt: timestamp("joined_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -242,6 +263,7 @@ export const predictions = pgTable(
     matchId: uuid("match_id")
       .notNull()
       .references(() => matches.id, { onDelete: "cascade" }),
+    predictionRow: integer("prediction_row").default(1).notNull(),
     homeScore: integer("home_score").notNull(),
     awayScore: integer("away_score").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -252,11 +274,21 @@ export const predictions = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("predictions_league_user_match_unique").on(
+    uniqueIndex("predictions_league_user_match_row_unique").on(
       table.leagueId,
       table.userId,
       table.matchId,
+      table.predictionRow,
     ),
     index("predictions_match_id_idx").on(table.matchId),
+    check(
+      "predictions_prediction_row_check",
+      sql`${table.predictionRow} in (1, 2)`,
+    ),
+    foreignKey({
+      name: "predictions_league_user_membership_fk",
+      columns: [table.leagueId, table.userId],
+      foreignColumns: [leagueMembers.leagueId, leagueMembers.userId],
+    }).onDelete("cascade"),
   ],
 );
