@@ -1,5 +1,5 @@
 import type { Match, PredictionEntry } from "@/lib/tournament-data";
-import { teams } from "@/lib/tournament-data";
+import { getTeamLabel, getTeamShortLabel } from "@/lib/tournament-data";
 import { savePrediction } from "@/lib/predictions/actions";
 import { formatViennaMatchTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -280,9 +280,11 @@ export function PredictionCard({
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 pt-5">
         <div className="flex min-w-0 flex-col items-center gap-2 text-center">
           <TeamFlag code={match.home} size="lg" />
-          <div className="text-sm font-bold text-zinc-950">{teams[match.home].code}</div>
+          <div className="text-sm font-bold text-zinc-950">
+            {getTeamShortLabel(match.home)}
+          </div>
           <div className="hidden text-xs text-zinc-500 sm:block">
-            {teams[match.home].name}
+            {getTeamLabel(match.home)}
           </div>
         </div>
 
@@ -305,9 +307,11 @@ export function PredictionCard({
 
         <div className="flex min-w-0 flex-col items-center gap-2 text-center">
           <TeamFlag code={match.away} size="lg" />
-          <div className="text-sm font-bold text-zinc-950">{teams[match.away].code}</div>
+          <div className="text-sm font-bold text-zinc-950">
+            {getTeamShortLabel(match.away)}
+          </div>
           <div className="hidden text-xs text-zinc-500 sm:block">
-            {teams[match.away].name}
+            {getTeamLabel(match.away)}
           </div>
         </div>
       </div>

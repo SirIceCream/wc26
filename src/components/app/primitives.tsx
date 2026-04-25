@@ -1,21 +1,34 @@
 import Image from "next/image";
-import type { TeamCode } from "@/lib/tournament-data";
-import { teams } from "@/lib/tournament-data";
+import { getTeamLabel, isTeamCode, teams } from "@/lib/tournament-data";
 import { cn } from "@/lib/utils";
 
 export function TeamFlag({
   code,
   size = "md",
 }: {
-  code: TeamCode;
+  code: string;
   size?: "sm" | "md" | "lg";
 }) {
-  const team = teams[code];
   const dimensions = {
     sm: { className: "h-5 w-7", height: 20, width: 28 },
     md: { className: "h-6 w-9", height: 24, width: 36 },
     lg: { className: "h-8 w-12", height: 32, width: 48 },
   }[size];
+
+  if (!isTeamCode(code)) {
+    return (
+      <span
+        className={cn(
+          "inline-flex shrink-0 items-center justify-center rounded-sm border border-dashed border-zinc-300 bg-zinc-50 text-[0.55rem] font-black text-zinc-500 shadow-sm",
+          dimensions.className,
+        )}
+      >
+        {code}
+      </span>
+    );
+  }
+
+  const team = teams[code];
 
   return (
     <span
@@ -37,14 +50,12 @@ export function TeamFlag({
 
 export const TeamDisc = TeamFlag;
 
-export function TeamLine({ code }: { code: TeamCode }) {
-  const team = teams[code];
-
+export function TeamLine({ code }: { code: string }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
       <TeamFlag code={code} size="sm" />
       <span className="truncate text-sm font-semibold text-zinc-950">
-        {team.name}
+        {getTeamLabel(code)}
       </span>
     </div>
   );

@@ -18,7 +18,6 @@ import {
   type Match,
   type MatchStatus,
   type PredictionEntry,
-  type TeamCode,
 } from "@/lib/tournament-data";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { formatViennaMatchTime } from "@/lib/time";
@@ -199,6 +198,8 @@ async function ensureUserContext(): Promise<UserContext> {
 
 function inferStatus(match: {
   status: string;
+  homeTeamCode: string | null;
+  awayTeamCode: string | null;
   homeScore: number | null;
   awayScore: number | null;
   lockedAt: Date;
@@ -207,6 +208,7 @@ function inferStatus(match: {
   if (match.status === "done" || (match.homeScore !== null && match.awayScore !== null)) {
     return "done";
   }
+  if (!match.homeTeamCode || !match.awayTeamCode) return "upcoming";
   if (match.lockedAt <= new Date()) return "locked";
   return "open";
 }
@@ -220,11 +222,11 @@ function mapMatch(
 
   return {
     id: match.id,
-    home: match.homeTeamCode as TeamCode,
-    away: match.awayTeamCode as TeamCode,
+    home: match.homeTeamCode ?? match.homePlaceholder ?? "TBD",
+    away: match.awayTeamCode ?? match.awayPlaceholder ?? "TBD",
     time: viennaTime.compact,
     kickoffAt: match.kickoffAt.toISOString(),
-    stage: match.stage,
+    stage: match.groupName ?? match.stage,
     status,
     venue: match.venue ?? undefined,
     deadline: status === "open" ? "Locks before kickoff" : undefined,
@@ -259,15 +261,13 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     .where(eq(leagues.slug, DEFAULT_LEAGUE_SLUG))
     .limit(1);
 
-  if (!league) {
-    return null;
-  }
-
   const dbMatches = await db.select().from(matches).orderBy(asc(matches.kickoffAt));
-  const dbPredictions = await db
-    .select()
-    .from(predictions)
-    .where(eq(predictions.leagueId, league.id));
+  const dbPredictions = league
+    ? await db
+        .select()
+        .from(predictions)
+        .where(eq(predictions.leagueId, league.id))
+    : [];
 
   if (dbMatches.length === 0) {
     return null;
@@ -287,14 +287,16 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
       (match.homeScore !== null && match.awayScore !== null),
   ).length;
 
-  const memberRows = await db
-    .select({
-      userId: leagueMembers.userId,
-      displayName: profiles.displayName,
-    })
-    .from(leagueMembers)
-    .innerJoin(profiles, eq(leagueMembers.userId, profiles.id))
-    .where(eq(leagueMembers.leagueId, league.id));
+  const memberRows = league
+    ? await db
+        .select({
+          userId: leagueMembers.userId,
+          displayName: profiles.displayName,
+        })
+        .from(leagueMembers)
+        .innerJoin(profiles, eq(leagueMembers.userId, profiles.id))
+        .where(eq(leagueMembers.leagueId, league.id))
+    : [];
 
   const matchById = new Map(mappedMatches.map((match) => [match.id, match]));
   const leaderboardRows = memberRows
@@ -332,10 +334,6 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
       previousRank: index + 1,
     }));
 
-  if (leaderboardRows.length === 0) {
-    return null;
-  }
-
   const incompleteMatches = mappedMatches.filter((match) => match.status !== "done");
   const todayMatches = incompleteMatches.slice(0, OPENING_SLATE_MATCH_COUNT);
   const recentResults = mappedMatches.filter((match) => match.status === "done");
@@ -344,7 +342,7 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
   return {
     connected: true,
     hasAdditionalTippreihe: false,
-    leagueId: league.id,
+    leagueId: league?.id ?? null,
     leaderboard: leaderboardRows,
     predictionEntries: [
       {

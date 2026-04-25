@@ -59,20 +59,27 @@ Apply migrations:
 npm run db:migrate
 ```
 
-Seed the opening fixtures:
+Seed the tournament data:
 
 ```bash
 npm run db:seed
 ```
 
-After migrations, run `supabase/rls.sql` in the Supabase SQL editor to enable
-private league policies.
+The seed script fetches the official FIFA World Cup 2026 season data and
+upserts teams, stadiums, all 104 matches, and FIFA provider mappings.
 
-Open Drizzle Studio:
+Visualize the database locally with Drizzle Studio:
 
 ```bash
 npm run db:studio
 ```
+
+You can also inspect and edit tables in the Supabase dashboard under Table
+Editor. Use the app's admin screens for live tournament hotfixes once they are
+implemented, so changes can be written to the audit log.
+
+After migrations, run `supabase/rls.sql` in the Supabase SQL editor to enable
+private league policies.
 
 ## Deployment
 
@@ -93,4 +100,5 @@ npx vercel
 - Run `npm run db:migrate`.
 - Run `npm run db:seed`.
 - Run `supabase/rls.sql` in Supabase.
-- Extend the fixture seed from the opening slate to all 104 matches.
+- Add football-data match mappings once the World Cup competition is available.
+- Build admin screens for match hotfixes, provider sync status, and audit log review.

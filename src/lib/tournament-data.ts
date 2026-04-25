@@ -6,14 +6,15 @@ export const OPENING_SLATE_MATCH_COUNT = 2;
 export const teams = tournamentSeed.teams;
 
 export type TeamCode = keyof typeof teams;
+export type MatchSide = TeamCode | string;
 
 export type MatchStatus = "upcoming" | "live" | "done" | "locked" | "open";
 
 export type Match = {
   id: string;
   fifaMatchId?: string;
-  home: TeamCode;
-  away: TeamCode;
+  home: MatchSide;
+  away: MatchSide;
   time: string;
   kickoffAt?: string;
   stage: string;
@@ -47,6 +48,18 @@ export type PredictionEntry = {
   ownerName: string;
   isAdditional: boolean;
 };
+
+export function isTeamCode(code: string | null | undefined): code is TeamCode {
+  return Boolean(code && code in teams);
+}
+
+export function getTeamLabel(code: MatchSide) {
+  return isTeamCode(code) ? teams[code].name : code;
+}
+
+export function getTeamShortLabel(code: MatchSide) {
+  return isTeamCode(code) ? teams[code].code : code;
+}
 
 function toTeamCode(code: string): TeamCode {
   if (code in teams) {

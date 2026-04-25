@@ -22,6 +22,13 @@
       "when": 1776545774215,
       "tag": "0002_fixed_elektra",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777121490544,
+      "tag": "0003_ambitious_sir_ram",
+      "breakpoints": true
     }
   ]
 }
