@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
-  { href: "/predict", label: "Predict" },
-  { href: "/fixtures", label: "Fixtures" },
-  { href: "/leaderboard", label: "Ranking" },
-  { href: "/profile", label: "Me" },
+  { href: "/predict", label: "Tippabgabe" },
+  { href: "/fixtures", label: "Spielplan" },
+  { href: "/leaderboard", label: "Rangliste" },
+  { href: "/profile", label: "Mein Profil" },
 ];
 
 type AppNavClientProps = {
@@ -38,7 +38,9 @@ export function AppNavClient({
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-800 text-sm font-black text-white">
               26
             </span>
-            <span className="text-base font-black text-zinc-950">WC26 Predict</span>
+            <span className="text-base font-black text-zinc-950">
+              Jackpotspiel
+            </span>
           </Link>
           <div className="hidden items-center gap-1 md:flex">
             {navItems.map((item) => (

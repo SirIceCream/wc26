@@ -3,6 +3,7 @@ import { DataModeBanner } from "@/components/app/data-mode-banner";
 import { LeaderboardMiniRow } from "@/components/app/leaderboard";
 import { MatchList } from "@/components/app/match-card";
 import { Avatar, SectionTitle, Surface } from "@/components/app/primitives";
+import { SpecialPickCard } from "@/components/app/special-pick-card";
 import { TournamentProgressCard } from "@/components/app/tournament-progress";
 import { getAppData } from "@/lib/app-data";
 import { formatViennaMatchTime } from "@/lib/time";
@@ -20,6 +21,7 @@ export default async function Home() {
   const openPickLabel = openPicks.length
     ? `${openPicks.length} Spiele sind aktuell tippbar.`
     : "Aktuell sind keine Tipps offen.";
+  const primarySpecialPrediction = data.specialPredictions[1];
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:grid lg:grid-cols-[1fr_22rem] lg:py-8">
@@ -58,6 +60,19 @@ export default async function Home() {
         </section>
 
         <TournamentProgressCard progress={data.tournamentProgress} />
+
+        <div className="grid gap-4 xl:grid-cols-2">
+          <SpecialPickCard
+            deadlineAt={data.specialPickDeadlineAt}
+            kind="champion"
+            prediction={primarySpecialPrediction}
+          />
+          <SpecialPickCard
+            deadlineAt={data.specialPickDeadlineAt}
+            kind="goals"
+            prediction={primarySpecialPrediction}
+          />
+        </div>
 
         {currentUserEntries.length ? (
           <Surface className="p-4">

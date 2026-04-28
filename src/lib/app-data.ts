@@ -6,6 +6,7 @@ import {
   matches,
   predictions,
   profiles,
+  specialPredictions,
 } from "@/db/schema";
 import {
   OPENING_SLATE_MATCH_COUNT,
@@ -20,6 +21,7 @@ import {
   type PredictionEntry,
 } from "@/lib/tournament-data";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { SPECIAL_PICKS_LOCK_AT } from "@/lib/special-picks/constants";
 import { formatViennaMatchTime } from "@/lib/time";
 import { getCurrentUser } from "./auth/session";
 
@@ -41,12 +43,22 @@ export type AppData = {
   predictionMatches: Match[];
   predictionEntries: PredictionEntry[];
   recentResults: Match[];
+  specialPickDeadlineAt: string;
+  specialPredictions: SpecialPredictionsByRow;
   todayMatches: Match[];
   tournamentProgress: TournamentProgress;
   upcomingMatches: Match[];
   userDisplayName: string | null;
   userEmail: string | null;
 };
+
+export type SpecialPrediction = {
+  championTeamCode: string | null;
+  predictionRow: number;
+  totalGoals: number | null;
+};
+
+export type SpecialPredictionsByRow = Record<number, SpecialPrediction>;
 
 export type TournamentStageProgress = {
   completed: number;
@@ -108,6 +120,8 @@ function seedData(
     ),
     predictionEntries: seedPredictionEntries,
     recentResults: seedRecentResults,
+    specialPickDeadlineAt: SPECIAL_PICKS_LOCK_AT,
+    specialPredictions: {},
     todayMatches: seedTodayMatches,
     tournamentProgress: buildTournamentProgress(0),
     upcomingMatches: seedUpcomingMatches,
@@ -312,6 +326,12 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
         .from(predictions)
         .where(eq(predictions.leagueId, league.id))
     : [];
+  const dbSpecialPredictions = league
+    ? await db
+        .select()
+        .from(specialPredictions)
+        .where(eq(specialPredictions.leagueId, league.id))
+    : [];
 
   if (dbMatches.length === 0) {
     return null;
@@ -330,6 +350,19 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     matchPredictions.push(prediction);
     currentUserPredictionsByMatch.set(prediction.matchId, matchPredictions);
   }
+
+  const currentUserSpecialPredictions = Object.fromEntries(
+    dbSpecialPredictions
+      .filter((prediction) => prediction.userId === context.profileId)
+      .map((prediction) => [
+        prediction.predictionRow,
+        {
+          championTeamCode: prediction.championTeamCode,
+          predictionRow: prediction.predictionRow,
+          totalGoals: prediction.totalGoals,
+        },
+      ]),
+  ) as SpecialPredictionsByRow;
 
   const mappedMatches = dbMatches.map((match) =>
     mapMatch(match, currentUserPredictionsByMatch.get(match.id)),
@@ -438,6 +471,8 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
         : []),
     ],
     recentResults,
+    specialPickDeadlineAt: SPECIAL_PICKS_LOCK_AT,
+    specialPredictions: currentUserSpecialPredictions,
     todayMatches: todayMatches.length
       ? todayMatches
       : mappedMatches.slice(0, OPENING_SLATE_MATCH_COUNT),

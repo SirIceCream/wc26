@@ -120,6 +120,8 @@ private league policies.
   state until it is saved again.
 - Deadlines use the German countdown label `Noch 00d 00h 00m 00s`.
 - Dates, team names, stage labels, and the main dashboard copy are German-first.
+- Special tips live on `/special-picks`: world champion and total tournament
+  goals are saved per `Tippreihe` before the opening kickoff deadline.
 
 ## Deployment
 

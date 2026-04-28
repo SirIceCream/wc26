@@ -13,6 +13,7 @@ alter table public.match_provider_mappings enable row level security;
 alter table public.provider_sync_log enable row level security;
 alter table public.admin_audit_log enable row level security;
 alter table public.predictions enable row level security;
+alter table public.special_predictions enable row level security;
 
 create or replace function public.is_league_member(target_league_id uuid)
 returns boolean
@@ -81,6 +82,9 @@ drop policy if exists "admins can create audit logs" on public.admin_audit_log;
 drop policy if exists "members can read league predictions after joining" on public.predictions;
 drop policy if exists "members can create their own unlocked predictions" on public.predictions;
 drop policy if exists "members can update their own unlocked predictions" on public.predictions;
+drop policy if exists "members can read visible special predictions" on public.special_predictions;
+drop policy if exists "members can create their own unlocked special predictions" on public.special_predictions;
+drop policy if exists "members can update their own unlocked special predictions" on public.special_predictions;
 
 create policy "profiles are visible to authenticated users"
 on public.profiles for select
@@ -274,5 +278,72 @@ with check (
       and matches.locked_at > now()
       and matches.home_team_code is not null
       and matches.away_team_code is not null
+  )
+);
+
+create policy "members can read visible special predictions"
+on public.special_predictions for select
+to authenticated
+using (
+  public.is_league_member(league_id)
+  and (
+    user_id = auth.uid()
+    or now() >= timestamptz '2026-06-11 19:00:00+00'
+  )
+);
+
+create policy "members can create their own unlocked special predictions"
+on public.special_predictions for insert
+to authenticated
+with check (
+  user_id = auth.uid()
+  and public.is_league_member(league_id)
+  and prediction_row in (1, 2)
+  and now() < timestamptz '2026-06-11 19:00:00+00'
+  and (
+    prediction_row = 1
+    or exists (
+      select 1
+      from public.league_members
+      where league_members.league_id = special_predictions.league_id
+        and league_members.user_id = auth.uid()
+        and league_members.uses_two_prediction_rows
+    )
+  )
+);
+
+create policy "members can update their own unlocked special predictions"
+on public.special_predictions for update
+to authenticated
+using (
+  user_id = auth.uid()
+  and public.is_league_member(league_id)
+  and prediction_row in (1, 2)
+  and now() < timestamptz '2026-06-11 19:00:00+00'
+  and (
+    prediction_row = 1
+    or exists (
+      select 1
+      from public.league_members
+      where league_members.league_id = special_predictions.league_id
+        and league_members.user_id = auth.uid()
+        and league_members.uses_two_prediction_rows
+    )
+  )
+)
+with check (
+  user_id = auth.uid()
+  and public.is_league_member(league_id)
+  and prediction_row in (1, 2)
+  and now() < timestamptz '2026-06-11 19:00:00+00'
+  and (
+    prediction_row = 1
+    or exists (
+      select 1
+      from public.league_members
+      where league_members.league_id = special_predictions.league_id
+        and league_members.user_id = auth.uid()
+        and league_members.uses_two_prediction_rows
+    )
   )
 );

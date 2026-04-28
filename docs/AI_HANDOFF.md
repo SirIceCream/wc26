@@ -9,7 +9,7 @@ Purpose: fast context restore for future AI sessions working on this repo. This 
 - Active branch: `dev`
 - Remote: `git@github.com:SirIceCream/wc26.git`
 - Baseline before the current checkpoint: `e0973c8 Add Supabase tournament fixtures schema`
-- Current checkpoint scope: local Alex test user, profile/league prediction rows, all group matches open for tips, German-first UI labels, mobile dev access, and prediction save UX.
+- Current checkpoint scope: local Alex test user, profile/league prediction rows, all group matches open for tips, German-first UI labels, mobile dev access, prediction save UX, and first special-tip implementation.
 - Local git author was set repo-local to the GitHub noreply identity.
 - Repo-local `core.sshCommand` points at `/home/aab/.ssh/id_ed25519_github`.
 
@@ -138,6 +138,37 @@ Important: `0005` and `0006` together are intentional. Do not squash casually un
 - Prediction cards show the German full team names below flags/abbreviations on mobile too.
 - Stage labels are localized through `getStageLabel`, for example `Group A -> Gruppe A`.
 - The dashboard progress tracker no longer shows the old `Open` count; it shows `Gespielt` and `KO-Phase`.
+
+## Jackpot Rules Context
+
+- The official rule PDF is stored in `/rules`.
+- Additional product checklist: `docs/JACKPOT_TODO.md`.
+- The game is private, invite-only, and played only among friends.
+- The complete stake is paid out; there is no margin/rake.
+- Accounting unit is `Tippreihe`, not only user.
+- One complete row costs `115 EUR`: 104 match Euros, 5 EUR world champion pot, 5 EUR total-goals pot, 1 EUR lucky-loser pot.
+- Match pots split evenly to two decimal places when multiple rows hit the exact result.
+- Special pots for world champion and total goals are separate.
+- Lucky loser is per `Tippreihe`.
+- Match and special tips lock at the planned kickoff/deadline time. For special tips this is the planned opening kickoff: `2026-06-11T19:00:00.000Z`.
+- Admin does not need unpaid-row deletion in the first flow because accounts are only created for already-paid participants.
+
+## Special Tips Implementation
+
+- Route: `/special-picks`.
+- Persistence table: `special_predictions`.
+- Persistence grain: `(league_id, user_id, prediction_row)`.
+- Stored fields:
+  - `champion_team_code`
+  - `total_goals`
+- Server actions:
+  - `saveChampionPrediction`
+  - `saveTotalGoalsPrediction`
+- Dashboard cards are rendered by `src/components/app/special-pick-card.tsx`.
+- Special-pick form/search UI is rendered by `src/components/app/special-picks-client.tsx`.
+- The team picker shows flag, German country name, and abbreviation; search matches German name and code.
+- RLS allows users to read their own special tips before deadline; other special tips become visible only after tournament-start lock.
+- The local dev DB has been migrated through migration 0007 and `supabase/rls.sql` was reapplied.
 
 ## RLS Notes
 

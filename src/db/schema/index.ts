@@ -292,3 +292,48 @@ export const predictions = pgTable(
     }).onDelete("cascade"),
   ],
 );
+
+export const specialPredictions = pgTable(
+  "special_predictions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    leagueId: uuid("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    predictionRow: integer("prediction_row").default(1).notNull(),
+    championTeamCode: text("champion_team_code").references(() => teams.code, {
+      onDelete: "restrict",
+    }),
+    totalGoals: integer("total_goals"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("special_predictions_league_user_row_unique").on(
+      table.leagueId,
+      table.userId,
+      table.predictionRow,
+    ),
+    index("special_predictions_user_id_idx").on(table.userId),
+    check(
+      "special_predictions_prediction_row_check",
+      sql`${table.predictionRow} in (1, 2)`,
+    ),
+    check(
+      "special_predictions_total_goals_check",
+      sql`${table.totalGoals} is null or ${table.totalGoals} between 0 and 999`,
+    ),
+    foreignKey({
+      name: "special_predictions_league_user_membership_fk",
+      columns: [table.leagueId, table.userId],
+      foreignColumns: [leagueMembers.leagueId, leagueMembers.userId],
+    }).onDelete("cascade"),
+  ],
+);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -24,9 +25,11 @@ function formatRemaining(milliseconds: number) {
 export function LockCountdown({
   fallback,
   targetAt,
+  tone = "light",
 }: {
   fallback?: string;
   targetAt?: string;
+  tone?: "dark" | "light";
 }) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -40,7 +43,12 @@ export function LockCountdown({
 
   if (!targetAt) {
     return fallback ? (
-      <div className="text-center text-xs font-black text-amber-700">
+      <div
+        className={cn(
+          "text-center text-xs font-black",
+          tone === "dark" ? "text-yellow-200" : "text-amber-700",
+        )}
+      >
         {fallback}
       </div>
     ) : null;
@@ -50,7 +58,12 @@ export function LockCountdown({
   const remaining = targetTime - now;
 
   return (
-    <div className="text-center text-xs font-black text-amber-700">
+    <div
+      className={cn(
+        "text-center text-xs font-black",
+        tone === "dark" ? "text-yellow-200" : "text-amber-700",
+      )}
+    >
       {remaining > 0 ? (
         <>
           Noch{" "}
