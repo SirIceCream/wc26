@@ -136,6 +136,8 @@ npx vercel
 
 ## Next Steps
 
+For the locked week-1 rollout plan, see `docs/MVP_WEEK1_PLAN.md`.
+
 - Create a Supabase project.
 - Configure email magic-link auth in Supabase.
 - Copy the three environment values into `.env.local`.
