@@ -48,7 +48,11 @@ export async function signInWithMagicLink(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/login?message=${encodeURIComponent(error.message)}`);
+    const message = error.message.toLowerCase().includes("rate limit")
+      ? "email-rate-limit"
+      : "auth-callback-failed";
+
+    redirect(`/login?message=${message}`);
   }
 
   redirect("/login?message=check-email");
