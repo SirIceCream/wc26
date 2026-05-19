@@ -1,5 +1,7 @@
+import Image from "next/image";
 import { signInWithMagicLink } from "@/lib/auth/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import logo from "../../../resources/logo.jpg";
 
 const messages: Record<string, string> = {
   "auth-callback-failed": "The sign-in link could not be verified.",
@@ -28,8 +30,14 @@ export default async function LoginPage({
         : null;
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_24rem] lg:py-10">
+    <div className="mx-auto grid min-h-screen max-w-5xl content-center gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_24rem] lg:py-10">
       <section className="rounded-lg bg-emerald-900 p-6 text-white shadow-sm">
+        <Image
+          alt="WC26 Jackpotspiel"
+          className="h-20 w-20 rounded-lg object-cover ring-1 ring-white/20"
+          priority
+          src={logo}
+        />
         <p className="text-xs font-bold uppercase text-emerald-100">
           Private Tipprunde
         </p>

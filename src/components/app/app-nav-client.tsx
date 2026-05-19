@@ -30,6 +30,10 @@ export function AppNavClient({
 }: AppNavClientProps) {
   const pathname = usePathname();
 
+  if (!isAuthenticated && pathname === "/login") {
+    return null;
+  }
+
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 backdrop-blur">
