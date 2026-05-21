@@ -2,6 +2,13 @@ import type { LeaderboardRow } from "@/lib/tournament-data";
 import { cn } from "@/lib/utils";
 import { Avatar, Surface } from "./primitives";
 
+function formatEuro(value: number) {
+  return `${value.toLocaleString("de-AT", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  })} EUR`;
+}
+
 export function LeaderboardMiniRow({
   row,
   isLast,
@@ -9,7 +16,6 @@ export function LeaderboardMiniRow({
   row: LeaderboardRow;
   isLast?: boolean;
 }) {
-  const exactRate = row.total > 0 ? Math.round((row.exact / row.total) * 100) : 0;
   const avatarName = row.ownerName ?? row.name;
 
   return (
@@ -39,11 +45,12 @@ export function LeaderboardMiniRow({
           {row.name}
         </div>
         <div className="text-xs font-medium text-zinc-500">
-          {row.entryLabel ? `${row.entryLabel} · ` : ""}
-          {row.exact} exact · {exactRate}%
+          {row.entryLabel ?? "Tippreihe 1"}
         </div>
       </div>
-      <div className="text-xl font-black text-zinc-950">{row.points}</div>
+      <div className="text-xl font-black text-zinc-950">
+        {formatEuro(row.points)}
+      </div>
     </div>
   );
 }
@@ -54,7 +61,7 @@ export function LeaderboardList({ rows }: { rows: LeaderboardRow[] }) {
       {rows.map((row, index) => (
         <LeaderboardMiniRow
           isLast={index === rows.length - 1}
-          key={row.name}
+          key={`${row.name}-${row.entryLabel ?? row.rank}`}
           row={row}
         />
       ))}
@@ -73,12 +80,14 @@ export function Podium({ rows }: { rows: LeaderboardRow[] }) {
       </div>
       <div className="grid grid-cols-3 items-end gap-3">
         {ordered.map((row) => (
-          <div className="text-center" key={row.name}>
+          <div className="text-center" key={`${row.name}-${row.entryLabel ?? row.rank}`}>
             <div className="mx-auto mb-2 flex justify-center">
               <Avatar compact={row.rank !== 1} name={row.ownerName ?? row.name} />
             </div>
             <div className="truncate text-sm font-bold">{row.name}</div>
-            <div className="text-2xl font-black text-yellow-200">{row.points}</div>
+            <div className="text-2xl font-black text-yellow-200">
+              {formatEuro(row.points)}
+            </div>
             <div
               className={cn(
                 "mt-3 flex items-start justify-center rounded-t-lg pt-2 text-xl font-black",

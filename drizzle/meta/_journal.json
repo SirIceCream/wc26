@@ -57,6 +57,27 @@
       "when": 1777145425484,
       "tag": "0007_lying_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779201092149,
+      "tag": "0008_pink_human_robot",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779202900000,
+      "tag": "0009_lock_special_predictions",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779204400000,
+      "tag": "0010_lock_match_predictions",
+      "breakpoints": true
     }
   ]
 }

@@ -120,4 +120,5 @@ export async function savePrediction(formData: FormData) {
   revalidatePath("/predict");
   revalidatePath("/leaderboard");
   revalidatePath("/profile");
+  revalidatePath(`/match/${matchId}`);
 }

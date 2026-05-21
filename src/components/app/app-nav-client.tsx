@@ -30,7 +30,7 @@ export function AppNavClient({
 }: AppNavClientProps) {
   const pathname = usePathname();
 
-  if (!isAuthenticated && pathname === "/login") {
+  if ((!isAuthenticated && pathname === "/login") || pathname === "/onboarding") {
     return null;
   }
 

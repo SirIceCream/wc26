@@ -77,6 +77,14 @@ export type Match = {
   score?: { home: number; away: number };
   prediction?: { home: number; away: number } | null;
   predictionsByRow?: Record<number, { home: number; away: number }>;
+  pot?: {
+    baseEuros: number;
+    carryInEuros: number;
+    totalEuros: number;
+    isJackpot: boolean;
+    payoutPerWinnerEuros: number;
+    winnerCount: number;
+  };
   points?: number;
 };
 
@@ -88,6 +96,7 @@ export type LeaderboardRow = {
   entryLabel?: string;
   hasAdditionalTippreihe?: boolean;
   isAdditionalEntry?: boolean;
+  winningsEuros?: number;
   points: number;
   exact: number;
   total: number;

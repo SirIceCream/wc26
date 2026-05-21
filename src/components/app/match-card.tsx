@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Match, PredictionEntry } from "@/lib/tournament-data";
 import { getStageLabel, getTeamLabel, getTeamShortLabel } from "@/lib/tournament-data";
 import { formatViennaMatchTime } from "@/lib/time";
@@ -6,11 +7,18 @@ import { LockCountdown } from "./lock-countdown";
 import { PredictionFormClient } from "./prediction-form-client";
 import { PointsChip, StatusChip, Surface, TeamFlag, TeamLine } from "./primitives";
 
+function formatEuro(value: number) {
+  return `${value.toLocaleString("de-AT", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  })} EUR`;
+}
+
 function statusLabel(match: Match) {
   if (match.status === "live") return "Live";
   if (match.status === "done") return "Ende";
   if (match.status === "open") {
-    return match.prediction ? "Gespeichert" : "Offen";
+    return match.prediction ? "Tipp abgegeben" : "Tipp offen";
   }
   if (match.status === "locked") return "Gesperrt";
   return "Demnächst";
@@ -19,6 +27,7 @@ function statusLabel(match: Match) {
 function statusKind(match: Match) {
   if (match.status === "live") return "live";
   if (match.status === "done") return "done";
+  if (match.status === "open" && match.prediction) return "hit";
   if (match.status === "open") return "open";
   if (match.status === "locked") return "locked";
   return "upcoming";
@@ -62,6 +71,17 @@ export function MatchRow({
       </div>
 
       <div className="flex min-w-16 flex-col items-end gap-2">
+        {match.pot ? (
+          <div className="rounded-lg bg-yellow-100 px-3 py-2 text-center text-yellow-950">
+            <div className="text-[0.65rem] font-black uppercase">
+              {match.pot.isJackpot ? "Jackpot" : "Pot"}
+            </div>
+            <div className="text-base font-black">
+              {formatEuro(match.pot.totalEuros)}
+            </div>
+          </div>
+        ) : null}
+
         {match.score ? (
           <div
             className={cn(
@@ -100,11 +120,13 @@ export function MatchRow({
 
 export function MatchList({
   emptyMessage = "Noch keine Spiele.",
+  linkToDetails,
   matches,
   showPrediction,
   showResult,
 }: {
   emptyMessage?: string;
+  linkToDetails?: boolean;
   matches: Match[];
   showPrediction?: boolean;
   showResult?: boolean;
@@ -119,18 +141,33 @@ export function MatchList({
 
   return (
     <Surface>
-      {matches.map((match, index) => (
-        <div
-          className={cn(index < matches.length - 1 && "border-b border-zinc-100")}
-          key={match.id}
-        >
+      {matches.map((match, index) => {
+        const row = (
           <MatchRow
             match={match}
             showPrediction={showPrediction}
             showResult={showResult}
           />
-        </div>
-      ))}
+        );
+
+        return (
+          <div
+            className={cn(index < matches.length - 1 && "border-b border-zinc-100")}
+            key={match.id}
+          >
+            {linkToDetails ? (
+              <Link
+                className="block transition hover:bg-zinc-50"
+                href={`/match/${match.id}`}
+              >
+                {row}
+              </Link>
+            ) : (
+              row
+            )}
+          </div>
+        );
+      })}
     </Surface>
   );
 }
@@ -245,11 +282,23 @@ export function PredictionCard({
   return (
     <Surface className="p-4">
       <div className="border-b border-zinc-100 pb-3">
-        <div className="text-sm font-semibold text-zinc-500">
-          {getStageLabel(match.stage)} · {matchTime.compact}
-          {match.venue ? (
-            <div className="mt-1 text-xs font-medium text-zinc-400">
-              {match.venue}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="text-sm font-semibold text-zinc-500">
+            {getStageLabel(match.stage)} · {matchTime.compact}
+            {match.venue ? (
+              <div className="mt-1 text-xs font-medium text-zinc-400">
+                {match.venue}
+              </div>
+            ) : null}
+          </div>
+          {match.pot ? (
+            <div className="rounded-lg bg-yellow-100 px-3 py-2 text-right text-yellow-950">
+              <div className="text-[0.65rem] font-black uppercase">
+                {match.pot.isJackpot ? "Jackpot" : "Pot"}
+              </div>
+              <div className="text-sm font-black">
+                {formatEuro(match.pot.totalEuros)}
+              </div>
             </div>
           ) : null}
         </div>

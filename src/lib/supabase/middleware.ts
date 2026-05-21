@@ -1,10 +1,25 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getLocalTestUser } from "@/lib/auth/local-test-user";
 import { getSupabaseConfig, isSupabaseConfigured } from "./config";
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const publicPaths = ["/login", "/auth/callback"];
+  const localUser = getLocalTestUser();
+
+  if (localUser) {
+    if (pathname === "/login") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    return NextResponse.next({
+      request,
+    });
+  }
 
   if (!isSupabaseConfigured()) {
     return NextResponse.next({

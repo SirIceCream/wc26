@@ -13,28 +13,33 @@ export default async function FixturesPage() {
       </div>
       <div className="mb-6">
         <p className="text-xs font-bold uppercase text-emerald-800">
-          All matches
+          Alle Spiele
         </p>
         <h1 className="mt-2 text-3xl font-black text-zinc-950">
-          Fixtures and results
+          Spielplan und Ergebnisse
         </h1>
       </div>
 
       <div className="space-y-7">
         <section className="space-y-3">
-          <SectionTitle title="Opening fixtures" />
-          <MatchList matches={data.todayMatches} showPrediction />
-        </section>
-
-        <section className="space-y-3">
-          <SectionTitle title="Next fixtures" />
-          <MatchList matches={data.upcomingMatches} />
-        </section>
-
-        <section className="space-y-3">
-          <SectionTitle title="Results" />
+          <SectionTitle title="Erste Spiele" />
           <MatchList
-            emptyMessage="No results yet. The tournament has not kicked off."
+            linkToDetails={data.connected}
+            matches={data.todayMatches}
+            showPrediction
+          />
+        </section>
+
+        <section className="space-y-3">
+          <SectionTitle title="Nächste Spiele" />
+          <MatchList linkToDetails={data.connected} matches={data.upcomingMatches} />
+        </section>
+
+        <section className="space-y-3">
+          <SectionTitle title="Ergebnisse" />
+          <MatchList
+            emptyMessage="Noch keine Ergebnisse. Das Turnier hat noch nicht begonnen."
+            linkToDetails={data.connected}
             matches={data.recentResults}
             showPrediction
             showResult

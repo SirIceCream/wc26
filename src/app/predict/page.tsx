@@ -6,11 +6,16 @@ import { formatViennaMatchTime } from "@/lib/time";
 
 export default async function PredictPage() {
   const data = await getAppData();
-  const openMatches = data.predictionMatches;
+  const now = new Date();
+  const openMatches = data.predictionMatches.filter((match) => {
+    if (match.status !== "open" || !match.kickoffAt) return false;
+
+    return new Date(match.kickoffAt) > now;
+  });
   const nextLockMatch = openMatches[0];
   const nextLockTime = nextLockMatch?.kickoffAt
     ? formatViennaMatchTime(nextLockMatch.kickoffAt).compact
-    : nextLockMatch?.time ?? "Keine offene Sperre";
+    : nextLockMatch?.time ?? "Kein offenes Spiel";
   const canEdit = data.connected && Boolean(data.leagueId && data.userEmail);
 
   return (
@@ -26,15 +31,10 @@ export default async function PredictPage() {
           <h1 className="mt-2 text-3xl font-black text-zinc-950">
             Tipps abgeben
           </h1>
-          {data.hasAdditionalTippreihe ? (
-            <div className="mt-3 inline-flex rounded-md bg-emerald-100 px-2 py-1 text-xs font-black uppercase text-emerald-900">
-              2 Tippreihen aktiv
-            </div>
-          ) : null}
         </div>
         <div className="rounded-lg bg-zinc-950 px-4 py-3 text-white">
           <div className="text-xs font-bold uppercase text-zinc-400">
-            Nächste Tippabgabe bis
+            Nächstes Spiel
           </div>
           <div className="text-xl font-black">{nextLockTime}</div>
           {nextLockMatch ? (

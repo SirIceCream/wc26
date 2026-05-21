@@ -1,4 +1,5 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { getDb, isDatabaseConfigured } from "@/db";
 import {
   leagueMembers,
@@ -17,6 +18,7 @@ import {
   upcomingMatches as seedUpcomingMatches,
   type LeaderboardRow,
   type Match,
+  type MatchSide,
   type MatchStatus,
   type PredictionEntry,
 } from "@/lib/tournament-data";
@@ -31,6 +33,7 @@ const DEFAULT_LEAGUE_NAME = "The Usual Suspects";
 type UserContext = {
   displayName: string | null;
   leagueId: string | null;
+  onboardingCompleted: boolean;
   profileId: string | null;
   userEmail: string | null;
 };
@@ -42,6 +45,7 @@ export type AppData = {
   leaderboard: LeaderboardRow[];
   predictionMatches: Match[];
   predictionEntries: PredictionEntry[];
+  profileResults: ProfileResultRow[];
   recentResults: Match[];
   specialPickDeadlineAt: string;
   specialPredictions: SpecialPredictionsByRow;
@@ -59,6 +63,62 @@ export type SpecialPrediction = {
 };
 
 export type SpecialPredictionsByRow = Record<number, SpecialPrediction>;
+
+export type ProfileResultRow = {
+  id: string;
+  matchId: string;
+  kickoffAt: string;
+  time: string;
+  stage: string;
+  home: MatchSide;
+  away: MatchSide;
+  entryLabel: string;
+  predictionRow: number;
+  predictedScore: { home: number; away: number } | null;
+  finalScore: { home: number; away: number };
+  outcome: "hit" | "miss" | "no-tip";
+  payoutEuros: number;
+};
+
+export type MatchPredictionSubmission = {
+  id: string;
+  displayName: string;
+  entryName: string;
+  entryLabel: string;
+  predictionRow: number;
+  homeScore: number;
+  awayScore: number;
+  isCurrentUser: boolean;
+};
+
+export type MatchPredictionGroup = {
+  scoreline: string;
+  homeScore: number;
+  awayScore: number;
+  count: number;
+  possibleWinEuros: number;
+  isFinalScore: boolean;
+  submissions: MatchPredictionSubmission[];
+};
+
+export type UserPotentialWin = {
+  entryLabel: string;
+  scoreline: string;
+  possibleWinEuros: number | null;
+};
+
+export type MatchIntegrityData = {
+  connected: boolean;
+  leagueId: string;
+  match: Match;
+  pot: NonNullable<Match["pot"]>;
+  predictionEntries: PredictionEntry[];
+  revealAllPredictions: boolean;
+  submissions: MatchPredictionSubmission[];
+  groups: MatchPredictionGroup[];
+  userPotentialWins: UserPotentialWin[];
+  totalTippreihen: number;
+};
 
 export type TournamentStageProgress = {
   completed: number;
@@ -119,6 +179,7 @@ function seedData(
       (match) => match.status === "open",
     ),
     predictionEntries: seedPredictionEntries,
+    profileResults: [],
     recentResults: seedRecentResults,
     specialPickDeadlineAt: SPECIAL_PICKS_LOCK_AT,
     specialPredictions: {},
@@ -158,6 +219,7 @@ async function ensureUserContext(): Promise<UserContext> {
         stringMetadata(user?.user_metadata, "full_name") ??
         (user?.email ? displayNameFromUser(user.email) : null),
       leagueId: null,
+      onboardingCompleted: false,
       profileId: user?.id ?? null,
       userEmail: user?.email ?? null,
     };
@@ -177,21 +239,17 @@ async function ensureUserContext(): Promise<UserContext> {
   const phoneNumber = stringMetadata(metadata, "phone_number");
   const avatarUrl = stringMetadata(metadata, "avatar_url");
 
-  await db
-    .insert(profiles)
-    .values({
-      id: user.id,
-      email,
-      username,
-      fullName,
-      displayName,
-      phoneNumber,
-      avatarUrl,
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: profiles.id,
-      set: {
+  let [profile] = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.id, user.id))
+    .limit(1);
+
+  if (!profile) {
+    [profile] = await db
+      .insert(profiles)
+      .values({
+        id: user.id,
         email,
         username,
         fullName,
@@ -199,8 +257,11 @@ async function ensureUserContext(): Promise<UserContext> {
         phoneNumber,
         avatarUrl,
         updatedAt: new Date(),
-      },
-    });
+      })
+      .returning();
+  }
+
+  const currentDisplayName = profile?.displayName ?? displayName;
 
   await db
     .insert(leagues)
@@ -220,8 +281,9 @@ async function ensureUserContext(): Promise<UserContext> {
 
   if (!league) {
     return {
-      displayName,
+      displayName: currentDisplayName,
       leagueId: null,
+      onboardingCompleted: Boolean(profile?.onboardingCompleted),
       profileId: user.id,
       userEmail: email,
     };
@@ -237,8 +299,9 @@ async function ensureUserContext(): Promise<UserContext> {
     .onConflictDoNothing();
 
   return {
-    displayName,
+    displayName: currentDisplayName,
     leagueId: league.id,
+    onboardingCompleted: Boolean(profile?.onboardingCompleted),
     profileId: user.id,
     userEmail: email,
   };
@@ -264,6 +327,7 @@ function inferStatus(match: {
 function mapMatch(
   match: typeof matches.$inferSelect,
   matchPredictions: (typeof predictions.$inferSelect)[] = [],
+  pot?: Match["pot"],
 ): Match {
   const status = inferStatus(match);
   const viennaTime = formatViennaMatchTime(match.kickoffAt);
@@ -295,16 +359,304 @@ function mapMatch(
       ? { home: primaryPrediction.homeScore, away: primaryPrediction.awayScore }
       : null,
     predictionsByRow,
+    pot,
   };
 }
 
-function scorePrediction(match: Match, prediction?: typeof predictions.$inferSelect) {
-  if (!match.score || !prediction) return 0;
+function isExactPrediction(
+  match: typeof matches.$inferSelect,
+  prediction: typeof predictions.$inferSelect,
+) {
+  return (
+    match.homeScore !== null &&
+    match.awayScore !== null &&
+    match.homeScore === prediction.homeScore &&
+    match.awayScore === prediction.awayScore
+  );
+}
 
-  return match.score.home === prediction.homeScore &&
-    match.score.away === prediction.awayScore
-    ? 3
-    : 0;
+function floorToCents(value: number) {
+  return Math.floor(value * 100) / 100;
+}
+
+type DbMatch = typeof matches.$inferSelect;
+type DbPrediction = typeof predictions.$inferSelect;
+type LeagueMemberRead = {
+  userId: string;
+  usesTwoPredictionRows: boolean;
+  displayName: string;
+};
+
+function predictionEntryKey(userId: string, predictionRow: number) {
+  return `${userId}:${predictionRow}`;
+}
+
+function predictionMatchEntryKey(
+  matchId: string,
+  userId: string,
+  predictionRow: number,
+) {
+  return `${matchId}:${predictionEntryKey(userId, predictionRow)}`;
+}
+
+function getEntryName(member: LeagueMemberRead, predictionRow: number) {
+  return member.usesTwoPredictionRows
+    ? `${member.displayName} ${predictionRow}`
+    : member.displayName;
+}
+
+function getPredictionRows(member: Pick<LeagueMemberRead, "usesTwoPredictionRows">) {
+  return member.usesTwoPredictionRows ? [1, 2] : [1];
+}
+
+function buildJackpotState(
+  dbMatches: DbMatch[],
+  dbPredictions: DbPrediction[],
+  memberRows: LeagueMemberRead[],
+) {
+  const totalTippreihen = memberRows.reduce(
+    (total, member) => total + (member.usesTwoPredictionRows ? 2 : 1),
+    0,
+  );
+  const basePotEuros = totalTippreihen;
+  const winningsByEntry = new Map<string, number>();
+  const payoutByMatchEntry = new Map<string, number>();
+  const potByMatchId = new Map<string, NonNullable<Match["pot"]>>();
+  let carryInEuros = 0;
+  let hasPendingUnsettledMatch = false;
+
+  const sortedPotMatches = [...dbMatches].sort((a, b) => {
+    const kickoffDiff = a.kickoffAt.getTime() - b.kickoffAt.getTime();
+
+    return kickoffDiff || (a.gameId ?? 0) - (b.gameId ?? 0);
+  });
+
+  for (const match of sortedPotMatches) {
+    const carryForMatch = hasPendingUnsettledMatch ? 0 : carryInEuros;
+    const totalPotEuros = basePotEuros + carryForMatch;
+    const matchPredictions = dbPredictions.filter(
+      (prediction) => prediction.matchId === match.id,
+    );
+    const isSettled =
+      match.status === "done" &&
+      match.homeScore !== null &&
+      match.awayScore !== null;
+    const winningPredictions = isSettled
+      ? matchPredictions.filter((prediction) =>
+          isExactPrediction(match, prediction),
+        )
+      : [];
+    const winnerCount = winningPredictions.length;
+    const payoutPerWinnerEuros =
+      winnerCount > 0 ? floorToCents(totalPotEuros / winnerCount) : 0;
+
+    potByMatchId.set(match.id, {
+      baseEuros: basePotEuros,
+      carryInEuros: carryForMatch,
+      isJackpot: carryForMatch > 0,
+      payoutPerWinnerEuros,
+      totalEuros: totalPotEuros,
+      winnerCount,
+    });
+
+    if (!isSettled) {
+      hasPendingUnsettledMatch = true;
+      continue;
+    }
+
+    if (winnerCount === 0) {
+      carryInEuros = totalPotEuros;
+      continue;
+    }
+
+    for (const prediction of winningPredictions) {
+      const entryKey = predictionEntryKey(
+        prediction.userId,
+        prediction.predictionRow,
+      );
+      const matchEntryKey = predictionMatchEntryKey(
+        match.id,
+        prediction.userId,
+        prediction.predictionRow,
+      );
+
+      payoutByMatchEntry.set(matchEntryKey, payoutPerWinnerEuros);
+      winningsByEntry.set(
+        entryKey,
+        (winningsByEntry.get(entryKey) ?? 0) + payoutPerWinnerEuros,
+      );
+    }
+
+    carryInEuros = 0;
+  }
+
+  return {
+    potByMatchId,
+    payoutByMatchEntry,
+    totalTippreihen,
+    winningsByEntry,
+  };
+}
+
+function buildProfileResults({
+  currentMember,
+  currentUserId,
+  dbMatches,
+  dbPredictions,
+  payoutByMatchEntry,
+}: {
+  currentMember: LeagueMemberRead | undefined;
+  currentUserId: string | null;
+  dbMatches: DbMatch[];
+  dbPredictions: DbPrediction[];
+  payoutByMatchEntry: Map<string, number>;
+}): ProfileResultRow[] {
+  if (!currentMember || !currentUserId) return [];
+
+  const predictionRows = getPredictionRows(currentMember);
+  const doneMatches = dbMatches.filter(
+    (match) =>
+      match.status === "done" &&
+      match.homeScore !== null &&
+      match.awayScore !== null,
+  );
+
+  return doneMatches.flatMap((match) => {
+    const matchTime = formatViennaMatchTime(match.kickoffAt);
+
+    return predictionRows.map((predictionRow) => {
+      const prediction =
+        dbPredictions.find(
+          (candidate) =>
+            candidate.userId === currentUserId &&
+            candidate.matchId === match.id &&
+            candidate.predictionRow === predictionRow,
+        ) ?? null;
+      const hit = prediction ? isExactPrediction(match, prediction) : false;
+      const payoutEuros =
+        payoutByMatchEntry.get(
+          predictionMatchEntryKey(match.id, currentUserId, predictionRow),
+        ) ?? 0;
+
+      return {
+        id: `${match.id}-${predictionRow}`,
+        matchId: match.id,
+        kickoffAt: match.kickoffAt.toISOString(),
+        time: matchTime.compact,
+        stage: match.groupName ?? match.stage,
+        home: match.homeTeamCode ?? match.homePlaceholder ?? "TBD",
+        away: match.awayTeamCode ?? match.awayPlaceholder ?? "TBD",
+        entryLabel: `Tippreihe ${predictionRow}`,
+        predictionRow,
+        predictedScore: prediction
+          ? { home: prediction.homeScore, away: prediction.awayScore }
+          : null,
+        finalScore: {
+          home: match.homeScore ?? 0,
+          away: match.awayScore ?? 0,
+        },
+        outcome: prediction ? (hit ? "hit" : "miss") : "no-tip",
+        payoutEuros,
+      };
+    });
+  });
+}
+
+function buildSubmissions({
+  currentUserId,
+  matchPredictions,
+  memberRows,
+}: {
+  currentUserId: string | null;
+  matchPredictions: DbPrediction[];
+  memberRows: LeagueMemberRead[];
+}): MatchPredictionSubmission[] {
+  const memberByUserId = new Map(
+    memberRows.map((member) => [member.userId, member]),
+  );
+
+  return matchPredictions
+    .map((prediction) => {
+      const member = memberByUserId.get(prediction.userId);
+      const displayName = member?.displayName ?? "Unbekannt";
+      const entryName = member
+        ? getEntryName(member, prediction.predictionRow)
+        : `${displayName} ${prediction.predictionRow}`;
+
+      return {
+        id: prediction.id,
+        displayName,
+        entryName,
+        entryLabel: `Tippreihe ${prediction.predictionRow}`,
+        predictionRow: prediction.predictionRow,
+        homeScore: prediction.homeScore,
+        awayScore: prediction.awayScore,
+        isCurrentUser: prediction.userId === currentUserId,
+      };
+    })
+    .sort((a, b) => {
+      const scorelineDiff =
+        a.homeScore - b.homeScore || a.awayScore - b.awayScore;
+
+      if (scorelineDiff) return scorelineDiff;
+
+      return (
+        a.displayName.localeCompare(b.displayName, "de-AT") ||
+        a.predictionRow - b.predictionRow
+      );
+    });
+}
+
+function buildPredictionGroups({
+  match,
+  pot,
+  submissions,
+}: {
+  match: DbMatch;
+  pot: NonNullable<Match["pot"]>;
+  submissions: MatchPredictionSubmission[];
+}): MatchPredictionGroup[] {
+  const groups = new Map<string, MatchPredictionSubmission[]>();
+  const finalScoreline =
+    match.homeScore !== null && match.awayScore !== null
+      ? `${match.homeScore}:${match.awayScore}`
+      : null;
+
+  for (const submission of submissions) {
+    const scoreline = `${submission.homeScore}:${submission.awayScore}`;
+    const group = groups.get(scoreline) ?? [];
+    group.push(submission);
+    groups.set(scoreline, group);
+  }
+
+  return [...groups.entries()]
+    .map(([scoreline, groupedSubmissions]) => {
+      const [homeScore, awayScore] = scoreline
+        .split(":")
+        .map((value) => Number.parseInt(value, 10));
+
+      return {
+        scoreline,
+        homeScore,
+        awayScore,
+        count: groupedSubmissions.length,
+        possibleWinEuros: floorToCents(
+          pot.totalEuros / groupedSubmissions.length,
+        ),
+        isFinalScore: finalScoreline === scoreline,
+        submissions: groupedSubmissions,
+      };
+    })
+    .sort((a, b) => {
+      if (a.isFinalScore !== b.isFinalScore) return a.isFinalScore ? -1 : 1;
+
+      return (
+        b.count - a.count ||
+        b.possibleWinEuros - a.possibleWinEuros ||
+        a.homeScore - b.homeScore ||
+        a.awayScore - b.awayScore
+      );
+    });
 }
 
 async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
@@ -364,15 +716,6 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
       ]),
   ) as SpecialPredictionsByRow;
 
-  const mappedMatches = dbMatches.map((match) =>
-    mapMatch(match, currentUserPredictionsByMatch.get(match.id)),
-  );
-  const completedMatchCount = dbMatches.filter(
-    (match) =>
-      match.status === "done" ||
-      (match.homeScore !== null && match.awayScore !== null),
-  ).length;
-
   const memberRows = league
     ? await db
         .select({
@@ -385,10 +728,25 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
         .where(eq(leagueMembers.leagueId, league.id))
     : [];
 
-  const matchById = new Map(mappedMatches.map((match) => [match.id, match]));
+  const { potByMatchId, payoutByMatchEntry, winningsByEntry } =
+    buildJackpotState(dbMatches, dbPredictions, memberRows);
+
+  const mappedMatches = dbMatches.map((match) =>
+    mapMatch(
+      match,
+      currentUserPredictionsByMatch.get(match.id),
+      potByMatchId.get(match.id),
+    ),
+  );
+  const completedMatchCount = dbMatches.filter(
+    (match) =>
+      match.status === "done" ||
+      (match.homeScore !== null && match.awayScore !== null),
+  ).length;
+
   const leaderboardRows = memberRows
     .flatMap((member) => {
-      const predictionRows = member.usesTwoPredictionRows ? [1, 2] : [1];
+      const predictionRows = getPredictionRows(member);
 
       return predictionRows.map((predictionRow) => {
         const memberPredictions = dbPredictions.filter(
@@ -396,31 +754,33 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
             prediction.userId === member.userId &&
             prediction.predictionRow === predictionRow,
         );
-        const points = memberPredictions.reduce((total, prediction) => {
-          const match = matchById.get(prediction.matchId);
-          return total + (match ? scorePrediction(match, prediction) : 0);
-        }, 0);
-        const exact = points / 3;
+        const exact = memberPredictions.filter((prediction) => {
+          const match = dbMatches.find((dbMatch) => dbMatch.id === prediction.matchId);
+
+          return match ? isExactPrediction(match, prediction) : false;
+        }).length;
+        const winningsEuros =
+          winningsByEntry.get(predictionEntryKey(member.userId, predictionRow)) ??
+          0;
+        const entryName = getEntryName(member, predictionRow);
 
         return {
           rank: 0,
           previousRank: 0,
-          name:
-            member.userId === context.profileId
-              ? "You"
-              : member.displayName,
+          name: entryName,
           ownerName: member.displayName,
           entryLabel: `Tippreihe ${predictionRow}`,
           hasAdditionalTippreihe: member.usesTwoPredictionRows,
           isAdditionalEntry: predictionRow === 2,
-          points,
+          points: winningsEuros,
+          winningsEuros,
           exact,
           total: memberPredictions.length,
           isCurrentUser: member.userId === context.profileId,
         };
       });
     })
-    .sort((a, b) => b.points - a.points || b.exact - a.exact)
+    .sort((a, b) => b.points - a.points)
     .map((row, index) => ({
       ...row,
       rank: index + 1,
@@ -443,6 +803,33 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     context.displayName ??
     context.userEmail?.split("@")[0] ??
     "Player";
+  const predictionEntries: PredictionEntry[] = [
+    {
+      id: "row-1",
+      label: "Tippreihe 1",
+      ownerName: currentOwnerName,
+      predictionRow: 1,
+      isAdditional: false,
+    },
+    ...(currentUserHasTwoRows
+      ? [
+          {
+            id: "row-2",
+            label: "Tippreihe 2",
+            ownerName: currentOwnerName,
+            predictionRow: 2,
+            isAdditional: true,
+          },
+        ]
+      : []),
+  ];
+  const profileResults = buildProfileResults({
+    currentMember,
+    currentUserId: context.profileId,
+    dbMatches,
+    dbPredictions,
+    payoutByMatchEntry,
+  });
 
   return {
     connected: true,
@@ -450,26 +837,8 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     leagueId: league?.id ?? null,
     leaderboard: leaderboardRows,
     predictionMatches,
-    predictionEntries: [
-      {
-        id: "row-1",
-        label: "Tippreihe 1",
-        ownerName: currentOwnerName,
-        predictionRow: 1,
-        isAdditional: false,
-      },
-      ...(currentUserHasTwoRows
-        ? [
-            {
-              id: "row-2",
-              label: "Tippreihe 2",
-              ownerName: currentOwnerName,
-              predictionRow: 2,
-              isAdditional: true,
-            },
-          ]
-        : []),
-    ],
+    predictionEntries,
+    profileResults,
     recentResults,
     specialPickDeadlineAt: SPECIAL_PICKS_LOCK_AT,
     specialPredictions: currentUserSpecialPredictions,
@@ -484,7 +853,7 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
 }
 
 export async function getAppData(): Promise<AppData> {
-  const context = await ensureUserContext();
+  const context = await ensureReadyUserContext();
 
   try {
     const data = await loadDatabaseData(context);
@@ -497,4 +866,176 @@ export async function getAppData(): Promise<AppData> {
   }
 
   return seedData(context.userEmail, context.displayName ?? "Alex 1");
+}
+
+async function ensureReadyUserContext() {
+  const context = await ensureUserContext();
+
+  if (context.profileId && !context.onboardingCompleted) {
+    redirect("/onboarding");
+  }
+
+  return context;
+}
+
+export async function getMatchIntegrityData(
+  matchId: string,
+): Promise<MatchIntegrityData | null> {
+  const context = await ensureReadyUserContext();
+
+  if (
+    !context.profileId ||
+    !isSupabaseConfigured() ||
+    !isDatabaseConfigured()
+  ) {
+    return null;
+  }
+
+  try {
+    const db = getDb();
+    const [league] = await db
+      .select()
+      .from(leagues)
+      .where(eq(leagues.slug, DEFAULT_LEAGUE_SLUG))
+      .limit(1);
+
+    if (!league) return null;
+
+    const [currentMember] = await db
+      .select({
+        userId: leagueMembers.userId,
+        usesTwoPredictionRows: leagueMembers.usesTwoPredictionRows,
+        displayName: profiles.displayName,
+      })
+      .from(leagueMembers)
+      .innerJoin(profiles, eq(leagueMembers.userId, profiles.id))
+      .where(
+        and(
+          eq(leagueMembers.leagueId, league.id),
+          eq(leagueMembers.userId, context.profileId),
+        ),
+      )
+      .limit(1);
+
+    if (!currentMember) return null;
+
+    const dbMatches = await db.select().from(matches).orderBy(asc(matches.kickoffAt));
+    const match = dbMatches.find((candidate) => candidate.id === matchId);
+
+    if (!match) return null;
+
+    const dbPredictions = await db
+      .select()
+      .from(predictions)
+      .where(eq(predictions.leagueId, league.id));
+    const memberRows = await db
+      .select({
+        userId: leagueMembers.userId,
+        usesTwoPredictionRows: leagueMembers.usesTwoPredictionRows,
+        displayName: profiles.displayName,
+      })
+      .from(leagueMembers)
+      .innerJoin(profiles, eq(leagueMembers.userId, profiles.id))
+      .where(eq(leagueMembers.leagueId, league.id));
+    const { potByMatchId, totalTippreihen } = buildJackpotState(
+      dbMatches,
+      dbPredictions,
+      memberRows,
+    );
+    const pot = potByMatchId.get(match.id) ?? {
+      baseEuros: 0,
+      carryInEuros: 0,
+      isJackpot: false,
+      payoutPerWinnerEuros: 0,
+      totalEuros: 0,
+      winnerCount: 0,
+    };
+    const matchPredictions = dbPredictions.filter(
+      (prediction) => prediction.matchId === match.id,
+    );
+    const currentUserPredictions = matchPredictions.filter(
+      (prediction) => prediction.userId === context.profileId,
+    );
+    const revealAllPredictions =
+      match.lockedAt <= new Date() ||
+      match.status === "live" ||
+      match.status === "done";
+    const visiblePredictions = revealAllPredictions
+      ? matchPredictions
+      : currentUserPredictions;
+    const submissions = buildSubmissions({
+      currentUserId: context.profileId,
+      matchPredictions: visiblePredictions,
+      memberRows,
+    });
+    const groups = revealAllPredictions
+      ? buildPredictionGroups({ match, pot, submissions })
+      : [];
+    const groupByScoreline = new Map(
+      groups.map((group) => [group.scoreline, group]),
+    );
+    const currentOwnerName =
+      currentMember.displayName ??
+      context.displayName ??
+      context.userEmail?.split("@")[0] ??
+      "Player";
+    const predictionEntries: PredictionEntry[] = [
+      {
+        id: "row-1",
+        label: "Tippreihe 1",
+        ownerName: currentOwnerName,
+        predictionRow: 1,
+        isAdditional: false,
+      },
+      ...(currentMember.usesTwoPredictionRows
+        ? [
+            {
+              id: "row-2",
+              label: "Tippreihe 2",
+              ownerName: currentOwnerName,
+              predictionRow: 2,
+              isAdditional: true,
+            },
+          ]
+        : []),
+    ];
+    const userPotentialWins = predictionEntries.map((entry) => {
+      const prediction = currentUserPredictions.find(
+        (candidate) => candidate.predictionRow === entry.predictionRow,
+      );
+
+      if (!prediction) {
+        return {
+          entryLabel: entry.label,
+          scoreline: "Kein Tipp",
+          possibleWinEuros: null,
+        };
+      }
+
+      const scoreline = `${prediction.homeScore}:${prediction.awayScore}`;
+
+      return {
+        entryLabel: entry.label,
+        scoreline,
+        possibleWinEuros:
+          groupByScoreline.get(scoreline)?.possibleWinEuros ?? null,
+      };
+    });
+
+    return {
+      connected: true,
+      leagueId: league.id,
+      match: mapMatch(match, currentUserPredictions, pot),
+      pot,
+      predictionEntries,
+      revealAllPredictions,
+      submissions,
+      groups,
+      userPotentialWins,
+      totalTippreihen,
+    };
+  } catch (error) {
+    console.error("Unable to load match integrity data:", error);
+    return null;
+  }
 }

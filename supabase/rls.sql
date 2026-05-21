@@ -202,7 +202,18 @@ with check (public.is_app_admin());
 create policy "members can read league predictions after joining"
 on public.predictions for select
 to authenticated
-using (public.is_league_member(league_id));
+using (
+  public.is_league_member(league_id)
+  and (
+    user_id = auth.uid()
+    or exists (
+      select 1
+      from public.matches
+      where matches.id = predictions.match_id
+        and matches.locked_at <= now()
+    )
+  )
+);
 
 create policy "members can create their own unlocked predictions"
 on public.predictions for insert

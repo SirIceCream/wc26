@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { signInWithMagicLink } from "@/lib/auth/actions";
+import { signInWithMagicLink, signInWithPassword } from "@/lib/auth/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import logo from "../../../resources/logo.jpg";
 
@@ -9,6 +9,8 @@ const messages: Record<string, string> = {
   "email-rate-limit":
     "Too many sign-in emails were requested. Wait a minute, then try again.",
   "invalid-email": "Enter a valid email address.",
+  "invalid-login": "Email or password is not correct.",
+  "invalid-password": "Password must be at least 6 characters.",
   "login-required": "Sign in before saving predictions.",
   "signed-out": "You have been signed out.",
   "supabase-not-configured":
@@ -42,12 +44,11 @@ export default async function LoginPage({
           Private Tipprunde
         </p>
         <h1 className="mt-3 max-w-xl text-4xl font-black">
-          Mit deiner E-Mail einloggen und Tipps speichern.
+          Einloggen und Tipps speichern.
         </h1>
         <p className="mt-4 max-w-xl text-sm leading-6 text-emerald-50">
-          Der Login laeuft ueber Supabase Magic Links. Neue echte Benutzer
-          bekommen nach dem ersten Login automatisch ein Profil und werden der
-          Tipprunde hinzugefuegt.
+          Neue Spieler starten mit einem Magic Link. Danach kannst du dich mit
+          E-Mail und Passwort anmelden.
         </p>
         <div className="mt-6 grid gap-3 text-sm font-semibold text-emerald-50 sm:grid-cols-3">
           <div className="rounded-lg bg-white/10 p-3 ring-1 ring-white/15">
@@ -62,17 +63,59 @@ export default async function LoginPage({
         </div>
       </section>
 
-      <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-black text-zinc-950">Sign in</h2>
+      <section className="space-y-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+        <h2 className="text-xl font-black text-zinc-950">Login</h2>
         {statusMessage ? (
           <div className="mt-4 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm font-semibold text-yellow-950">
             {statusMessage}
           </div>
         ) : null}
-        <form action={signInWithMagicLink} className="mt-5 space-y-4">
+        <form action={signInWithPassword} className="space-y-4">
+          <label className="block">
+            <span className="text-sm font-bold text-zinc-700">
+              Name oder Email
+            </span>
+            <input
+              autoComplete="username"
+              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-emerald-800"
+              name="identifier"
+              placeholder="Alex"
+              type="text"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-bold text-zinc-700">Passwort</span>
+            <input
+              autoComplete="current-password"
+              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-emerald-800"
+              name="password"
+              placeholder="Mindestens 6 Zeichen"
+              type="password"
+            />
+          </label>
+          <button
+            className="w-full rounded-lg bg-zinc-950 px-4 py-3 text-sm font-black text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+            disabled={!configured}
+            type="submit"
+          >
+            Login
+          </button>
+        </form>
+
+        <div className="border-t border-zinc-200 pt-4">
+          <h3 className="text-sm font-black uppercase text-zinc-500">
+            Erster Login
+          </h3>
+          <p className="mt-2 text-xs leading-5 text-zinc-500">
+            Noch kein Passwort? Fordere einmalig einen Magic Link an.
+          </p>
+        </div>
+
+        <form action={signInWithMagicLink} className="space-y-4">
           <label className="block">
             <span className="text-sm font-bold text-zinc-700">Email</span>
             <input
+              autoComplete="email"
               className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-emerald-800"
               name="email"
               placeholder="you@example.com"
@@ -87,10 +130,6 @@ export default async function LoginPage({
             Send magic link
           </button>
         </form>
-        <p className="mt-4 text-xs leading-5 text-zinc-500">
-          Use the same email address you want attached to your predictions.
-          The link expires automatically.
-        </p>
       </section>
     </div>
   );

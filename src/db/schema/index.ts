@@ -21,6 +21,9 @@ export const profiles = pgTable("profiles", {
   displayName: text("display_name").notNull(),
   phoneNumber: text("phone_number"),
   avatarUrl: text("avatar_url"),
+  onboardingCompleted: boolean("onboarding_completed")
+    .default(false)
+    .notNull(),
   appRole: text("app_role").default("user").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

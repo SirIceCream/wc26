@@ -17,6 +17,7 @@ function createDb() {
   }
 
   const queryClient = postgres(connectionString, {
+    max: 3,
     prepare: false,
   });
 
