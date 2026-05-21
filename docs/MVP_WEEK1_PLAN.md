@@ -135,6 +135,7 @@ Purpose: ship a stable private beta by Friday with account creation, persistent 
 - `DATABASE_URL`
 - `NEXT_PUBLIC_APP_URL=https://jackpotspiel.at`
 - `SIGNUP_INVITE_CODE`
+- `ADMIN_EMAILS`
 - `LOCAL_TEST_USER_ENABLED=false` in production
 
 ## Risks + Mitigations
