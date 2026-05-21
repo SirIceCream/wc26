@@ -11,7 +11,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./session";
 
-const DEFAULT_LEAGUE_NAME = "The Usual Suspects";
+const DEFAULT_LEAGUE_NAME = "Private League";
 
 function getEmail(formData: FormData) {
   const email = formData.get("email");
@@ -41,6 +41,22 @@ function getPassword(formData: FormData) {
   }
 
   return password;
+}
+
+function getInviteCode(formData: FormData) {
+  const inviteCode = formData.get("inviteCode");
+
+  if (typeof inviteCode !== "string" || !inviteCode.trim()) {
+    return null;
+  }
+
+  return inviteCode.trim();
+}
+
+function isValidInviteCode(inviteCode: string | null) {
+  const configuredCode = process.env.SIGNUP_INVITE_CODE?.trim();
+
+  return Boolean(configuredCode && inviteCode === configuredCode);
 }
 
 function getDisplayName(formData: FormData) {
@@ -90,18 +106,24 @@ export async function signInWithMagicLink(formData: FormData) {
   }
 
   const email = getEmail(formData);
+  const inviteCode = getInviteCode(formData);
 
   if (!email) {
     redirect("/login?message=invalid-email");
   }
 
+  if (!isValidInviteCode(inviteCode)) {
+    redirect("/login?message=invalid-invite");
+  }
+
   const supabase = await createClient();
   const origin = await getOrigin();
+  const next = encodeURIComponent(`/onboarding?invite=${encodeURIComponent(inviteCode ?? "")}`);
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${origin}/auth/callback?next=${next}`,
     },
   });
 
@@ -179,6 +201,7 @@ export async function completeOnboarding(formData: FormData) {
 
   const displayName = getDisplayName(formData);
   const password = getPassword(formData);
+  const inviteCode = getInviteCode(formData);
 
   if (!displayName) {
     redirect("/onboarding?message=invalid-name");
@@ -186,6 +209,10 @@ export async function completeOnboarding(formData: FormData) {
 
   if (!password) {
     redirect("/onboarding?message=invalid-password");
+  }
+
+  if (!isValidInviteCode(inviteCode)) {
+    redirect("/onboarding?message=invalid-invite");
   }
 
   const isLocalTestUser = user.app_metadata.provider === "local-test";

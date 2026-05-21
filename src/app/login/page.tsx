@@ -4,17 +4,18 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import logo from "../../../resources/logo.jpg";
 
 const messages: Record<string, string> = {
-  "auth-callback-failed": "The sign-in link could not be verified.",
-  "check-email": "Check your email for the magic link.",
+  "auth-callback-failed": "Der Login-Link konnte nicht bestätigt werden.",
+  "check-email": "Prüfe deine E-Mails und öffne den Login-Link.",
   "email-rate-limit":
-    "Too many sign-in emails were requested. Wait a minute, then try again.",
-  "invalid-email": "Enter a valid email address.",
-  "invalid-login": "Email or password is not correct.",
-  "invalid-password": "Password must be at least 6 characters.",
-  "login-required": "Sign in before saving predictions.",
-  "signed-out": "You have been signed out.",
+    "Es wurden zu viele Links angefordert. Warte kurz und versuche es erneut.",
+  "invalid-email": "Gib eine gültige E-Mail-Adresse ein.",
+  "invalid-invite": "Der Einladungscode ist nicht gültig.",
+  "invalid-login": "Name, E-Mail oder Passwort ist nicht korrekt.",
+  "invalid-password": "Das Passwort muss mindestens 6 Zeichen haben.",
+  "login-required": "Melde dich zuerst an.",
+  "signed-out": "Du wurdest abgemeldet.",
   "supabase-not-configured":
-    "Supabase is not configured yet. Add the live project values first.",
+    "Der Login ist noch nicht fertig konfiguriert.",
 };
 
 export default async function LoginPage({
@@ -28,11 +29,11 @@ export default async function LoginPage({
     message && messages[message]
       ? messages[message]
       : message
-        ? "Sign-in failed. Check the email address and try again."
+        ? "Login fehlgeschlagen. Prüfe deine Eingaben und versuche es erneut."
         : null;
 
   return (
-    <div className="mx-auto grid min-h-screen max-w-5xl content-center gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_24rem] lg:py-10">
+    <div className="mx-auto grid min-h-screen max-w-4xl content-center gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_24rem] lg:py-10">
       <section className="rounded-lg bg-emerald-900 p-6 text-white shadow-sm">
         <Image
           alt="WC26 Jackpotspiel"
@@ -40,31 +41,16 @@ export default async function LoginPage({
           priority
           src={logo}
         />
-        <p className="text-xs font-bold uppercase text-emerald-100">
-          Private Tipprunde
-        </p>
         <h1 className="mt-3 max-w-xl text-4xl font-black">
-          Einloggen und Tipps speichern.
+          WC26 Jackpotspiel
         </h1>
         <p className="mt-4 max-w-xl text-sm leading-6 text-emerald-50">
-          Neue Spieler starten mit einem Magic Link. Danach kannst du dich mit
-          E-Mail und Passwort anmelden.
+          Melde dich an, gib deine Tipps ab und behalte deine Gewinne im Blick.
         </p>
-        <div className="mt-6 grid gap-3 text-sm font-semibold text-emerald-50 sm:grid-cols-3">
-          <div className="rounded-lg bg-white/10 p-3 ring-1 ring-white/15">
-            E-Mail eingeben
-          </div>
-          <div className="rounded-lg bg-white/10 p-3 ring-1 ring-white/15">
-            Link oeffnen
-          </div>
-          <div className="rounded-lg bg-white/10 p-3 ring-1 ring-white/15">
-            Tipps abgeben
-          </div>
-        </div>
       </section>
 
       <section className="space-y-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-black text-zinc-950">Login</h2>
+        <h2 className="text-xl font-black text-zinc-950">Anmelden</h2>
         {statusMessage ? (
           <div className="mt-4 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm font-semibold text-yellow-950">
             {statusMessage}
@@ -73,7 +59,7 @@ export default async function LoginPage({
         <form action={signInWithPassword} className="space-y-4">
           <label className="block">
             <span className="text-sm font-bold text-zinc-700">
-              Name oder Email
+              Name oder E-Mail
             </span>
             <input
               autoComplete="username"
@@ -98,28 +84,41 @@ export default async function LoginPage({
             disabled={!configured}
             type="submit"
           >
-            Login
+            Einloggen
           </button>
         </form>
 
         <div className="border-t border-zinc-200 pt-4">
           <h3 className="text-sm font-black uppercase text-zinc-500">
-            Erster Login
+            Erster Zugang
           </h3>
           <p className="mt-2 text-xs leading-5 text-zinc-500">
-            Noch kein Passwort? Fordere einmalig einen Magic Link an.
+            Noch kein Passwort? Fordere mit deinem Einladungscode einen
+            Login-Link an.
           </p>
         </div>
 
         <form action={signInWithMagicLink} className="space-y-4">
           <label className="block">
-            <span className="text-sm font-bold text-zinc-700">Email</span>
+            <span className="text-sm font-bold text-zinc-700">E-Mail</span>
             <input
               autoComplete="email"
               className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-emerald-800"
               name="email"
-              placeholder="you@example.com"
+              placeholder="du@example.com"
               type="email"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-bold text-zinc-700">
+              Einladungscode
+            </span>
+            <input
+              autoComplete="off"
+              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-emerald-800"
+              name="inviteCode"
+              placeholder="Code"
+              type="text"
             />
           </label>
           <button
@@ -127,7 +126,7 @@ export default async function LoginPage({
             disabled={!configured}
             type="submit"
           >
-            Send magic link
+            Login-Link anfordern
           </button>
         </form>
       </section>

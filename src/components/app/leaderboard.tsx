@@ -76,7 +76,7 @@ export function Podium({ rows }: { rows: LeaderboardRow[] }) {
   return (
     <div className="rounded-lg bg-emerald-900 p-4 text-white shadow-sm">
       <div className="mb-4 text-center text-xs font-bold uppercase text-emerald-100">
-        Top of the table
+        Spitze der Rangliste
       </div>
       <div className="grid grid-cols-3 items-end gap-3">
         {ordered.map((row) => (

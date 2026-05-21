@@ -78,6 +78,13 @@
       "when": 1779204400000,
       "tag": "0010_lock_match_predictions",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1779465000000,
+      "tag": "0011_rename_default_league",
+      "breakpoints": true
     }
   ]
 }

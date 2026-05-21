@@ -28,7 +28,7 @@ import { formatViennaMatchTime } from "@/lib/time";
 import { getCurrentUser } from "./auth/session";
 
 export const DEFAULT_LEAGUE_SLUG = "the-usual-suspects";
-const DEFAULT_LEAGUE_NAME = "The Usual Suspects";
+const DEFAULT_LEAGUE_NAME = "Private League";
 
 type UserContext = {
   displayName: string | null;

@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 
 const messages: Record<string, string> = {
   "auth-update-failed": "Das Passwort konnte nicht gespeichert werden.",
+  "invalid-invite": "Der Einladungscode ist nicht gültig.",
   "invalid-name": "Bitte gib einen Namen mit 2 bis 40 Zeichen ein.",
   "invalid-password": "Das Passwort muss mindestens 6 Zeichen haben.",
   "name-taken": "Dieser Name ist schon vergeben.",
@@ -12,7 +13,7 @@ const messages: Record<string, string> = {
 export default async function OnboardingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ message?: string }>;
+  searchParams: Promise<{ invite?: string; message?: string }>;
 }) {
   const user = await getCurrentUser();
 
@@ -20,7 +21,7 @@ export default async function OnboardingPage({
     redirect("/login?message=login-required");
   }
 
-  const { message } = await searchParams;
+  const { invite, message } = await searchParams;
   const statusMessage = message ? messages[message] : null;
   const suggestedName =
     typeof user.user_metadata.display_name === "string"
@@ -37,8 +38,8 @@ export default async function OnboardingPage({
           Fast fertig
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
-          Waehle deinen Anzeigenamen, deine Anzahl an Tippreihen und ein
-          Passwort fuer kuenftige Logins.
+          Wähle deinen Anzeigenamen, deine Anzahl an Tippreihen und ein
+          Passwort für künftige Logins.
         </p>
 
         {statusMessage ? (
@@ -48,6 +49,21 @@ export default async function OnboardingPage({
         ) : null}
 
         <form action={completeOnboarding} className="mt-6 space-y-5">
+          <label className="block">
+            <span className="text-sm font-bold text-zinc-700">
+              Einladungscode
+            </span>
+            <input
+              autoComplete="off"
+              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-emerald-800"
+              defaultValue={invite ?? ""}
+              name="inviteCode"
+              placeholder="Code"
+              required
+              type="text"
+            />
+          </label>
+
           <label className="block">
             <span className="text-sm font-bold text-zinc-700">
               Anzeigename

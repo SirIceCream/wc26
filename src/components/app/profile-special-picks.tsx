@@ -210,7 +210,6 @@ export function ProfileSpecialPicks({
                       totalGoals: event.target.value,
                     })
                   }
-                  placeholder="171"
                   required
                   type="number"
                   value={row.totalGoals}

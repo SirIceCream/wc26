@@ -39,8 +39,7 @@ export function ProfileResults({ results }: { results: ProfileResultRow[] }) {
     return (
       <Surface className="p-4">
         <p className="text-sm font-semibold text-zinc-500">
-          Noch keine Ergebnisse. Sobald Spiele beendet sind, steht hier jede
-          Tippreihe inklusive 0,00 EUR.
+          Noch keine Ergebnisse.
         </p>
       </Surface>
     );

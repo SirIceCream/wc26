@@ -406,7 +406,6 @@ export function SpecialPicksClient({
                 setGoals(event.target.value);
                 setGoalsError(false);
               }}
-              placeholder="z.B. 171"
               required
               type="number"
               value={goals}

@@ -121,7 +121,7 @@ Important: `0005` and `0006` together are intentional. Do not squash casually un
 - User upsert happens in `ensureUserContext()`.
 - Default league:
   - slug: `the-usual-suspects`
-  - name: `The Usual Suspects`
+  - name: `Private League`
 - If DB/Supabase missing or errors, app falls back to JSON seed data.
 - Match mapping supports team placeholders because knockout rows may not have real teams yet.
 - `/predict` shows all open matches with concrete home/away team codes. This currently means the group-stage matches are tippbar.
