@@ -65,7 +65,7 @@ export default async function LoginPage({
               autoComplete="username"
               className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-emerald-800"
               name="identifier"
-              placeholder="Alex"
+              placeholder="Username oder E-Mail"
               type="text"
             />
           </label>
