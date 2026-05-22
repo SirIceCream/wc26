@@ -44,10 +44,10 @@ export default async function LoginPage({
           src={logo}
         />
         <h1 className="mt-3 max-w-xl text-4xl font-black">
-          WC26 Jackpotspiel
+          Jackpotspiel 2026
         </h1>
         <p className="mt-4 max-w-xl text-sm leading-6 text-emerald-50">
-          Melde dich an, gib deine Tipps ab und behalte deine Gewinne im Blick.
+          Melde dich an, gib deine Tipps ab und knacke den Jackpot!
         </p>
       </section>
 

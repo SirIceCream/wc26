@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DataModeBanner } from "@/components/app/data-mode-banner";
 import { ProfileResults } from "@/components/app/profile-results";
 import { ProfileSpecialPicks } from "@/components/app/profile-special-picks";
@@ -45,9 +46,15 @@ export default async function ProfilePage() {
         <h1 className="mt-2 text-3xl font-black text-zinc-950">
           Meine Tipps
         </h1>
+        <p className="mt-2 text-sm font-semibold text-zinc-500">
+          Fragen?{" "}
+          <Link className="font-black text-emerald-800 hover:text-emerald-950" href="/rules">
+            Hier gehts zum Regelwerk.
+          </Link>
+        </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Surface className="p-4">
           <div className="text-sm font-semibold text-zinc-500">
             Bisher gewonnen
@@ -60,15 +67,6 @@ export default async function ProfilePage() {
           <div className="text-sm font-semibold text-zinc-500">Offen</div>
           <div className="mt-2 text-4xl font-black text-yellow-700">
             {pendingPicks.length * data.predictionEntries.length}
-          </div>
-        </Surface>
-        <Surface className="p-4">
-          <div className="text-sm font-semibold text-zinc-500">Verpasst</div>
-          <div className="mt-2 text-4xl font-black text-amber-700">
-            {data.missedPredictionCount}
-          </div>
-          <div className="mt-1 text-xs font-semibold text-zinc-500">
-            Gesperrte Spiele ohne Tipp
           </div>
         </Surface>
       </div>
