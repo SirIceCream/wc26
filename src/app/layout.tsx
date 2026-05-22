@@ -4,7 +4,7 @@ import { RouteLoadingIndicator } from "@/components/app/route-loading-indicator"
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "WC26 Tipps",
+  title: "Jackpotspiel 2026",
   description: "Private WM-2026-Tipprunde für Freunde.",
 };
 
