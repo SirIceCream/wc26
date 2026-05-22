@@ -69,6 +69,45 @@ export function LeaderboardList({ rows }: { rows: LeaderboardRow[] }) {
   );
 }
 
+function CrownBadge() {
+  return (
+    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-yellow-200 text-yellow-950 ring-4 ring-yellow-100">
+      <svg
+        aria-label="Platz 1"
+        className="h-9 w-9"
+        fill="none"
+        role="img"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M3 8.5 7.5 13 12 5l4.5 8L21 8.5V19H3V8.5Z"
+          fill="currentColor"
+        />
+        <path d="M3 19h18" stroke="currentColor" strokeWidth="2" />
+      </svg>
+    </div>
+  );
+}
+
+function RankBadge({ rank }: { rank: number }) {
+  if (rank === 1) {
+    return <CrownBadge />;
+  }
+
+  return (
+    <div
+      className={cn(
+        "mx-auto flex h-14 w-14 items-center justify-center rounded-full text-2xl font-black ring-4",
+        rank === 2
+          ? "bg-zinc-200 text-zinc-800 ring-zinc-100"
+          : "bg-amber-700 text-amber-50 ring-amber-200",
+      )}
+    >
+      {rank}
+    </div>
+  );
+}
+
 export function Podium({ rows }: { rows: LeaderboardRow[] }) {
   const topThree = rows.slice(0, 3);
   const ordered = [topThree[1], topThree[0], topThree[2]].filter(Boolean);
@@ -82,7 +121,7 @@ export function Podium({ rows }: { rows: LeaderboardRow[] }) {
         {ordered.map((row) => (
           <div className="text-center" key={`${row.name}-${row.entryLabel ?? row.rank}`}>
             <div className="mx-auto mb-2 flex justify-center">
-              <Avatar compact={row.rank !== 1} name={row.ownerName ?? row.name} />
+              <RankBadge rank={row.rank} />
             </div>
             <div className="truncate text-sm font-bold">{row.name}</div>
             <div className="text-2xl font-black text-yellow-200">

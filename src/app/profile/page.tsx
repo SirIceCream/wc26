@@ -47,7 +47,7 @@ export default async function ProfilePage() {
         </h1>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Surface className="p-4">
           <div className="text-sm font-semibold text-zinc-500">
             Bisher gewonnen
@@ -60,6 +60,15 @@ export default async function ProfilePage() {
           <div className="text-sm font-semibold text-zinc-500">Offen</div>
           <div className="mt-2 text-4xl font-black text-yellow-700">
             {pendingPicks.length * data.predictionEntries.length}
+          </div>
+        </Surface>
+        <Surface className="p-4">
+          <div className="text-sm font-semibold text-zinc-500">Verpasst</div>
+          <div className="mt-2 text-4xl font-black text-amber-700">
+            {data.missedPredictionCount}
+          </div>
+          <div className="mt-1 text-xs font-semibold text-zinc-500">
+            Gesperrte Spiele ohne Tipp
           </div>
         </Surface>
       </div>

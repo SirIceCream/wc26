@@ -5,6 +5,9 @@ import { getAppData } from "@/lib/app-data";
 
 export default async function FixturesPage() {
   const data = await getAppData();
+  const incompleteMatches = [...data.todayMatches, ...data.upcomingMatches];
+  const nextMatches = incompleteMatches.slice(0, 2);
+  const otherMatches = incompleteMatches.slice(2);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:py-8">
@@ -22,17 +25,17 @@ export default async function FixturesPage() {
 
       <div className="space-y-7">
         <section className="space-y-3">
-          <SectionTitle title="Erste Spiele" />
+          <SectionTitle title="Nächste Spiele" />
           <MatchList
             linkToDetails={data.connected}
-            matches={data.todayMatches}
+            matches={nextMatches}
             showPrediction
           />
         </section>
 
         <section className="space-y-3">
-          <SectionTitle title="Nächste Spiele" />
-          <MatchList linkToDetails={data.connected} matches={data.upcomingMatches} />
+          <SectionTitle title="Weitere Spiele" />
+          <MatchList linkToDetails={data.connected} matches={otherMatches} />
         </section>
 
         <section className="space-y-3">

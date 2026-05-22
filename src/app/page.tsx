@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { DataModeBanner } from "@/components/app/data-mode-banner";
 import { LeaderboardMiniRow } from "@/components/app/leaderboard";
+import { LockCountdown } from "@/components/app/lock-countdown";
 import { MatchList } from "@/components/app/match-card";
-import { Avatar, SectionTitle, Surface } from "@/components/app/primitives";
+import { SectionTitle, Surface } from "@/components/app/primitives";
 import { SpecialPickCard } from "@/components/app/special-pick-card";
 import { TournamentProgressCard } from "@/components/app/tournament-progress";
 import { getAppData } from "@/lib/app-data";
@@ -20,6 +21,10 @@ export default async function Home() {
   const openPickLabel = openPicks.length
     ? `${openPicks.length} Spiele sind aktuell tippbar.`
     : "Aktuell sind keine Tipps offen.";
+  const missedPickLabel =
+    data.missedPredictionCount === 1
+      ? "1 verpasster Tipp"
+      : `${data.missedPredictionCount} verpasste Tipps`;
   const primarySpecialPrediction = data.specialPredictions[1];
   const specialPicksOpen = new Date(data.specialPickDeadlineAt) > new Date();
 
@@ -29,7 +34,7 @@ export default async function Home() {
         <DataModeBanner connected={data.connected} />
 
         <section className="overflow-hidden rounded-lg bg-emerald-900 text-white shadow-sm">
-          <div className="grid gap-6 p-5 sm:grid-cols-[1fr_auto] sm:p-6">
+          <div className="grid gap-6 p-5 lg:grid-cols-[1fr_22rem] lg:items-start sm:p-6">
             <div>
               <h1 className="text-3xl font-black sm:text-4xl">
                 Servus {firstName}
@@ -39,20 +44,20 @@ export default async function Home() {
                 werden.
               </p>
             </div>
-            <div className="flex items-start justify-between gap-4 sm:justify-end">
-              <Avatar name={userDisplayName} />
-              {nextLockMatch ? (
-                <div className="rounded-lg bg-yellow-200 px-4 py-3 text-yellow-950">
-                  <div className="text-xs font-bold uppercase">
-                    Nächstes Spiel
-                  </div>
-                  <div className="mt-1 text-lg font-black">{nextLockTime}</div>
-                  <div className="text-xs font-semibold">
-                    {nextLockMatch.home} gegen {nextLockMatch.away}
-                  </div>
+            {nextLockMatch ? (
+              <div className="w-full rounded-lg bg-yellow-200 px-5 py-4 text-yellow-950 lg:px-6">
+                <div className="text-xs font-bold uppercase">
+                  Nächstes Spiel
                 </div>
-              ) : null}
-            </div>
+                <div className="mt-1 text-xl font-black">{nextLockTime}</div>
+                <div className="text-sm font-semibold">
+                  {nextLockMatch.home} gegen {nextLockMatch.away}
+                </div>
+                <div className="mt-3 rounded-md bg-yellow-100 px-3 py-2">
+                  <LockCountdown targetAt={nextLockMatch.kickoffAt} />
+                </div>
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -90,6 +95,16 @@ export default async function Home() {
             Tippen
           </span>
         </Link>
+
+        {data.missedPredictionCount > 0 ? (
+          <Link
+            className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm font-semibold text-yellow-950 shadow-sm"
+            href="/profile"
+          >
+            <span className="font-black">{missedPickLabel}</span>{" "}
+            wurden bereits gesperrt und zählen als Kein Tipp.
+          </Link>
+        ) : null}
 
         <section className="space-y-3">
           <SectionTitle

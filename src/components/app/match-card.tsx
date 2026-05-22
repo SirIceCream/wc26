@@ -291,16 +291,6 @@ export function PredictionCard({
               </div>
             ) : null}
           </div>
-          {match.pot ? (
-            <div className="rounded-lg bg-yellow-100 px-3 py-2 text-right text-yellow-950">
-              <div className="text-[0.65rem] font-black uppercase">
-                {match.pot.isJackpot ? "Jackpot" : "Pot"}
-              </div>
-              <div className="text-sm font-black">
-                {formatEuro(match.pot.totalEuros)}
-              </div>
-            </div>
-          ) : null}
         </div>
       </div>
 

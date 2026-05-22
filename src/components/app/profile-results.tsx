@@ -54,7 +54,9 @@ export function ProfileResults({ results }: { results: ProfileResultRow[] }) {
       {sortedResults.map((result, index) => (
         <div
           className={cn(
-            index < sortedResults.length - 1 && "border-b border-zinc-100",
+            result.outcome === "hit" && "bg-yellow-50",
+            index < sortedResults.length - 1 &&
+              (result.outcome === "hit" ? "border-b border-yellow-100" : "border-b border-zinc-100"),
           )}
           key={result.id}
         >
@@ -86,8 +88,8 @@ export function ProfileResults({ results }: { results: ProfileResultRow[] }) {
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-zinc-500">
-                <span>
-                  Tipp {predictionLabel(result)}
+                <span className="rounded-md bg-emerald-50 px-2 py-1 font-black text-emerald-900 ring-1 ring-emerald-100">
+                  Mein Tipp: {predictionLabel(result)}
                 </span>
                 <span>
                   {getTeamShortLabel(result.home)} - {getTeamShortLabel(result.away)}
@@ -110,7 +112,7 @@ export function ProfileResults({ results }: { results: ProfileResultRow[] }) {
                 className="text-sm font-bold text-emerald-800"
                 href={`/match/${result.matchId}`}
               >
-                Integrität prüfen
+                Spieldetails
               </Link>
             </div>
           </div>

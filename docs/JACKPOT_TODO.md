@@ -58,4 +58,5 @@ Purpose: product and implementation checklist for the private WC26 Jackpotspiel.
   - [ ] Final fallback to world champion, then total goals.
 - [ ] Build admin result confirmation and payout review.
 - [ ] Replace points-first leaderboard with jackpot-first money/treffer overview.
+- [ ] Add deterministic next-game tie-breaking for simultaneous kickoffs on the dashboard, using kickoff time plus official match/game number.
 - [ ] Add tests for cent rounding and carry-over edge cases.

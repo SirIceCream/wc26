@@ -43,6 +43,7 @@ export type AppData = {
   hasAdditionalTippreihe: boolean;
   leagueId: string | null;
   leaderboard: LeaderboardRow[];
+  missedPredictionCount: number;
   predictionMatches: Match[];
   predictionEntries: PredictionEntry[];
   profileResults: ProfileResultRow[];
@@ -175,6 +176,7 @@ function seedData(
     ),
     leagueId: null,
     leaderboard: seedLeaderboard,
+    missedPredictionCount: 0,
     predictionMatches: [...seedTodayMatches, ...seedUpcomingMatches].filter(
       (match) => match.status === "open",
     ),
@@ -562,6 +564,27 @@ function buildProfileResults({
   });
 }
 
+function countMissedPredictions({
+  matches,
+  predictionEntries,
+}: {
+  matches: Match[];
+  predictionEntries: PredictionEntry[];
+}) {
+  return matches.reduce((total, match) => {
+    if (!["done", "live", "locked"].includes(match.status)) {
+      return total;
+    }
+
+    return (
+      total +
+      predictionEntries.filter(
+        (entry) => !match.predictionsByRow?.[entry.predictionRow],
+      ).length
+    );
+  }, 0);
+}
+
 function buildSubmissions({
   currentUserId,
   matchPredictions,
@@ -830,12 +853,17 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     dbPredictions,
     payoutByMatchEntry,
   });
+  const missedPredictionCount = countMissedPredictions({
+    matches: mappedMatches,
+    predictionEntries,
+  });
 
   return {
     connected: true,
     hasAdditionalTippreihe: currentUserHasTwoRows,
     leagueId: league?.id ?? null,
     leaderboard: leaderboardRows,
+    missedPredictionCount,
     predictionMatches,
     predictionEntries,
     profileResults,

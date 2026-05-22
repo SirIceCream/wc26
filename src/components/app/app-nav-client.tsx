@@ -62,7 +62,10 @@ export function AppNavClient({
             ))}
           </div>
           {isAuthenticated ? (
-            <form action={signOutAction} className="hidden md:block">
+            <form
+              action={signOutAction}
+              className={cn(isActive(pathname, "/profile") ? "block" : "hidden", "md:block")}
+            >
               <button
                 className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-bold text-white hover:bg-zinc-800"
                 title={userEmail ?? undefined}

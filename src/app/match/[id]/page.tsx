@@ -70,11 +70,27 @@ function PotentialWinList({ items }: { items: UserPotentialWin[] }) {
   );
 }
 
-function OwnTips({ submissions }: { submissions: MatchPredictionSubmission[] }) {
+function OwnTips({
+  canPredict,
+  submissions,
+}: {
+  canPredict: boolean;
+  submissions: MatchPredictionSubmission[];
+}) {
   if (!submissions.length) {
     return (
       <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm font-semibold text-zinc-500">
-        Du hast für dieses Spiel noch keinen Tipp abgegeben.
+        Du hast für dieses Spiel keinen Tipp abgegeben.
+        {canPredict ? (
+          <>
+            {" "}
+            <Link className="font-black text-emerald-800 hover:text-emerald-950" href="/predict">
+              Jetzt tippen!
+            </Link>
+          </>
+        ) : (
+          <span> Das Spiel ist bereits gesperrt.</span>
+        )}
       </div>
     );
   }
@@ -221,6 +237,7 @@ export default async function MatchIntegrityPage({
   const ownSubmissions = data.submissions.filter(
     (submission) => submission.isCurrentUser,
   );
+  const canPredict = data.match.status === "open";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:py-8">
@@ -305,18 +322,19 @@ export default async function MatchIntegrityPage({
         </Surface>
       </div>
 
+      <section className="mt-7 space-y-3">
+        <h2 className="text-sm font-bold uppercase text-zinc-500">
+          Dein Tipp
+        </h2>
+        <OwnTips canPredict={canPredict} submissions={ownSubmissions} />
+      </section>
+
       {!data.revealAllPredictions ? (
-        <section className="mt-7 space-y-3">
-          <h2 className="text-sm font-bold uppercase text-zinc-500">
-            Dein Tipp
-          </h2>
-          <OwnTips submissions={ownSubmissions} />
-          <Surface className="p-4">
-            <p className="text-sm font-semibold text-zinc-600">
-              Andere Tipps werden erst nach Anpfiff sichtbar.
-            </p>
-          </Surface>
-        </section>
+        <Surface className="mt-4 p-4">
+          <p className="text-sm font-semibold text-zinc-600">
+            Andere Tipps werden erst nach Anpfiff sichtbar.
+          </p>
+        </Surface>
       ) : data.groups.length ? (
         <div className="mt-7 space-y-5">
           <DistributionPanel groups={data.groups} />
