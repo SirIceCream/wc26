@@ -227,7 +227,6 @@ async function ensureUserContext(): Promise<UserContext> {
     };
   }
 
-  const db = getDb();
   const email = user.email ?? null;
   const metadata = user.user_metadata;
   const displayName =
@@ -240,73 +239,103 @@ async function ensureUserContext(): Promise<UserContext> {
     usernameFromUser(user.id, email ?? undefined);
   const phoneNumber = stringMetadata(metadata, "phone_number");
   const avatarUrl = stringMetadata(metadata, "avatar_url");
+  const isLocalTestUser = user.app_metadata.provider === "local-test";
 
-  let [profile] = await db
-    .select()
-    .from(profiles)
-    .where(eq(profiles.id, user.id))
-    .limit(1);
+  try {
+    const db = getDb();
 
-  if (!profile) {
-    [profile] = await db
-      .insert(profiles)
-      .values({
-        id: user.id,
-        email,
-        username,
-        fullName,
+    let [profile] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, user.id))
+      .limit(1);
+
+    if (!profile && isLocalTestUser) {
+      [profile] = await db
+        .insert(profiles)
+        .values({
+          id: user.id,
+          email,
+          username,
+          fullName,
+          displayName,
+          phoneNumber,
+          avatarUrl,
+          onboardingCompleted: true,
+          updatedAt: new Date(),
+        })
+        .returning();
+    }
+
+    if (!profile) {
+      return {
         displayName,
-        phoneNumber,
-        avatarUrl,
-        updatedAt: new Date(),
-      })
-      .returning();
-  }
+        leagueId: null,
+        onboardingCompleted: false,
+        profileId: user.id,
+        userEmail: email,
+      };
+    }
 
-  const currentDisplayName = profile?.displayName ?? displayName;
+    const currentDisplayName = profile.displayName ?? displayName;
 
-  await db
-    .insert(leagues)
-    .values({
-      slug: DEFAULT_LEAGUE_SLUG,
-      name: DEFAULT_LEAGUE_NAME,
-      createdBy: user.id,
-      updatedAt: new Date(),
-    })
-    .onConflictDoNothing();
+    if (isLocalTestUser) {
+      await db
+        .insert(leagues)
+        .values({
+          slug: DEFAULT_LEAGUE_SLUG,
+          name: DEFAULT_LEAGUE_NAME,
+          createdBy: user.id,
+          updatedAt: new Date(),
+        })
+        .onConflictDoNothing();
+    }
 
-  const [league] = await db
-    .select()
-    .from(leagues)
-    .where(eq(leagues.slug, DEFAULT_LEAGUE_SLUG))
-    .limit(1);
+    const [league] = await db
+      .select()
+      .from(leagues)
+      .where(eq(leagues.slug, DEFAULT_LEAGUE_SLUG))
+      .limit(1);
 
-  if (!league) {
+    if (!league) {
+      return {
+        displayName: currentDisplayName,
+        leagueId: null,
+        onboardingCompleted: Boolean(profile.onboardingCompleted),
+        profileId: user.id,
+        userEmail: email,
+      };
+    }
+
+    if (isLocalTestUser) {
+      await db
+        .insert(leagueMembers)
+        .values({
+          leagueId: league.id,
+          userId: user.id,
+          role: "member",
+        })
+        .onConflictDoNothing();
+    }
+
     return {
       displayName: currentDisplayName,
+      leagueId: league.id,
+      onboardingCompleted: Boolean(profile.onboardingCompleted),
+      profileId: user.id,
+      userEmail: email,
+    };
+  } catch (error) {
+    console.error("Falling back to seeded user context:", error);
+
+    return {
+      displayName,
       leagueId: null,
-      onboardingCompleted: Boolean(profile?.onboardingCompleted),
+      onboardingCompleted: true,
       profileId: user.id,
       userEmail: email,
     };
   }
-
-  await db
-    .insert(leagueMembers)
-    .values({
-      leagueId: league.id,
-      userId: user.id,
-      role: "member",
-    })
-    .onConflictDoNothing();
-
-  return {
-    displayName: currentDisplayName,
-    leagueId: league.id,
-    onboardingCompleted: Boolean(profile?.onboardingCompleted),
-    profileId: user.id,
-    userEmail: email,
-  };
 }
 
 function inferStatus(match: {

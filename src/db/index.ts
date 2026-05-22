@@ -4,6 +4,19 @@ import * as schema from "./schema";
 
 let cachedDb: ReturnType<typeof createDb> | null = null;
 
+function getMaxConnections() {
+  const configuredMax = Number.parseInt(
+    process.env.DATABASE_MAX_CONNECTIONS ?? "",
+    10,
+  );
+
+  if (Number.isInteger(configuredMax) && configuredMax > 0) {
+    return configuredMax;
+  }
+
+  return process.env.NODE_ENV === "production" ? 1 : 3;
+}
+
 function createDb() {
   const connectionString =
     process.env.DATABASE_URL ??
@@ -17,7 +30,8 @@ function createDb() {
   }
 
   const queryClient = postgres(connectionString, {
-    max: 3,
+    idle_timeout: 10,
+    max: getMaxConnections(),
     prepare: false,
   });
 
