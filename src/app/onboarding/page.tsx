@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { SubmitButton } from "@/components/app/submit-button";
 import { completeOnboarding } from "@/lib/auth/actions";
 import { getCurrentUser } from "@/lib/auth/session";
 
@@ -121,12 +122,13 @@ export default async function OnboardingPage({
             />
           </label>
 
-          <button
-            className="w-full rounded-lg bg-zinc-950 px-4 py-3 text-sm font-black text-white hover:bg-zinc-800"
+          <SubmitButton
+            className="w-full rounded-lg bg-zinc-950 px-4 py-3 text-sm font-black text-white hover:bg-zinc-800 disabled:cursor-wait disabled:bg-zinc-300"
+            pendingLabel="Speichert..."
             type="submit"
           >
             Profil speichern
-          </button>
+          </SubmitButton>
         </form>
       </section>
     </div>

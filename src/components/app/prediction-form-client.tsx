@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import type { PredictionEntry } from "@/lib/tournament-data";
 import { savePrediction } from "@/lib/predictions/actions";
 import { cn } from "@/lib/utils";
+import { LoadingSpinner } from "./loading-spinner";
 
 type PredictionValue = {
   away: number;
@@ -206,7 +207,7 @@ export function PredictionFormClient({
       {canEdit ? (
         <button
           className={cn(
-            "rounded-lg px-3 py-2 text-xs font-black transition-colors disabled:cursor-wait disabled:opacity-70",
+            "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-black transition-colors disabled:cursor-wait disabled:opacity-70",
             isDirty && "bg-amber-400 text-zinc-950 hover:bg-amber-300",
             isSaved &&
               "border border-emerald-800 bg-white text-emerald-900 hover:bg-emerald-50",
@@ -217,7 +218,8 @@ export function PredictionFormClient({
           disabled={isSaving}
           type="submit"
         >
-          {buttonLabel(state)}
+          {state === "saving" ? <LoadingSpinner /> : null}
+          <span>{buttonLabel(state)}</span>
         </button>
       ) : (
         <div className="text-center text-[0.7rem] font-semibold text-zinc-500">

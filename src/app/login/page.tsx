@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { SubmitButton } from "@/components/app/submit-button";
 import { signInWithMagicLink, signInWithPassword } from "@/lib/auth/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import logo from "../../../resources/logo.jpg";
@@ -81,13 +82,14 @@ export default async function LoginPage({
               type="password"
             />
           </label>
-          <button
+          <SubmitButton
             className="w-full rounded-lg bg-zinc-950 px-4 py-3 text-sm font-black text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
             disabled={!configured}
+            pendingLabel="Wird eingeloggt..."
             type="submit"
           >
             Einloggen
-          </button>
+          </SubmitButton>
         </form>
 
         <div className="border-t border-zinc-200 pt-4">
@@ -123,13 +125,14 @@ export default async function LoginPage({
               type="text"
             />
           </label>
-          <button
+          <SubmitButton
             className="w-full rounded-lg bg-zinc-950 px-4 py-3 text-sm font-black text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
             disabled={!configured}
+            pendingLabel="Sendet Link..."
             type="submit"
           >
             Login-Link anfordern
-          </button>
+          </SubmitButton>
         </form>
       </section>
     </div>

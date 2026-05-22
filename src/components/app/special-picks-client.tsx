@@ -11,6 +11,7 @@ import {
 } from "@/lib/special-picks/actions";
 import type { TeamCode } from "@/lib/tournament-data";
 import { cn } from "@/lib/utils";
+import { LoadingSpinner } from "./loading-spinner";
 import { LockCountdown } from "./lock-countdown";
 import { TeamFlag } from "./primitives";
 
@@ -345,7 +346,7 @@ export function SpecialPicksClient({
 
             <button
               className={cn(
-                "w-full rounded-lg px-4 py-3 text-sm font-black transition-colors disabled:cursor-wait disabled:opacity-70",
+                "inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-black transition-colors disabled:cursor-wait disabled:opacity-70",
                 championState === "clean"
                   ? "border border-emerald-800 bg-white text-emerald-900 hover:bg-emerald-50"
                   : "bg-emerald-800 text-white hover:bg-emerald-900",
@@ -357,7 +358,10 @@ export function SpecialPicksClient({
               disabled={championSaving || !canEdit}
               type="submit"
             >
-              {canEdit ? buttonLabel(championState) : "Spezialtipps gesperrt"}
+              {championState === "saving" ? <LoadingSpinner /> : null}
+              <span>
+                {canEdit ? buttonLabel(championState) : "Spezialtipps gesperrt"}
+              </span>
             </button>
           </form>
         </section>
@@ -412,7 +416,7 @@ export function SpecialPicksClient({
             />
             <button
               className={cn(
-                "w-full rounded-lg px-4 py-3 text-sm font-black transition-colors disabled:cursor-wait disabled:opacity-70",
+                "inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-black transition-colors disabled:cursor-wait disabled:opacity-70",
                 goalsState === "clean"
                   ? "border border-emerald-800 bg-white text-emerald-900 hover:bg-emerald-50"
                   : "bg-emerald-800 text-white hover:bg-emerald-900",
@@ -424,7 +428,8 @@ export function SpecialPicksClient({
               disabled={goalsSaving || !canEdit}
               type="submit"
             >
-              {canEdit ? buttonLabel(goalsState) : "Spezialtipps gesperrt"}
+              {goalsState === "saving" ? <LoadingSpinner /> : null}
+              <span>{canEdit ? buttonLabel(goalsState) : "Spezialtipps gesperrt"}</span>
             </button>
           </form>
         </section>

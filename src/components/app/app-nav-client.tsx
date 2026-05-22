@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { SubmitButton } from "./submit-button";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -66,13 +67,14 @@ export function AppNavClient({
               action={signOutAction}
               className={cn(isActive(pathname, "/profile") ? "block" : "hidden", "md:block")}
             >
-              <button
+              <SubmitButton
                 className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-bold text-white hover:bg-zinc-800"
+                pendingLabel="Meldet ab..."
                 title={userEmail ?? undefined}
                 type="submit"
               >
                 Logout
-              </button>
+              </SubmitButton>
             </form>
           ) : (
             <Link

@@ -11,6 +11,7 @@ import {
 } from "@/lib/special-picks/actions";
 import { getTeamLabel, type TeamCode } from "@/lib/tournament-data";
 import { cn } from "@/lib/utils";
+import { LoadingSpinner } from "./loading-spinner";
 import { TeamFlag } from "./primitives";
 
 type TeamOption = {
@@ -217,11 +218,12 @@ export function ProfileSpecialPicks({
               </label>
 
               <button
-                className="h-11 rounded-lg bg-zinc-950 px-4 text-sm font-black text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-zinc-950 px-4 text-sm font-black text-white hover:bg-zinc-800 disabled:cursor-wait disabled:bg-zinc-300"
                 disabled={!canEdit || saving}
                 type="submit"
               >
-                {saving ? "Speichert..." : canEdit ? "Speichern" : "Gesperrt"}
+                {saving ? <LoadingSpinner /> : null}
+                <span>{saving ? "Speichert..." : canEdit ? "Speichern" : "Gesperrt"}</span>
               </button>
             </div>
 
