@@ -5,6 +5,8 @@ import logo from "../../../resources/logo.jpg";
 
 const messages: Record<string, string> = {
   "auth-callback-failed": "Der Login-Link konnte nicht bestätigt werden.",
+  "auth-link-denied":
+    "Der Login-Link wurde abgelehnt oder ist abgelaufen. Fordere bitte einen neuen Link an.",
   "check-email": "Prüfe deine E-Mails und öffne den Login-Link.",
   "email-rate-limit":
     "Es wurden zu viele Links angefordert. Warte kurz und versuche es erneut.",

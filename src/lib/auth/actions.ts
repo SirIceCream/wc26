@@ -100,6 +100,22 @@ async function getOrigin() {
   );
 }
 
+async function getMagicLinkRedirectPath(email: string, inviteCode: string | null) {
+  if (isDatabaseConfigured()) {
+    const [profile] = await getDb()
+      .select({ onboardingCompleted: profiles.onboardingCompleted })
+      .from(profiles)
+      .where(eq(profiles.email, email))
+      .limit(1);
+
+    if (profile?.onboardingCompleted) {
+      return "/";
+    }
+  }
+
+  return `/onboarding?invite=${encodeURIComponent(inviteCode ?? "")}`;
+}
+
 export async function signInWithMagicLink(formData: FormData) {
   if (!isSupabaseConfigured()) {
     redirect("/login?message=supabase-not-configured");
@@ -118,12 +134,16 @@ export async function signInWithMagicLink(formData: FormData) {
 
   const supabase = await createClient();
   const origin = await getOrigin();
-  const next = encodeURIComponent(`/onboarding?invite=${encodeURIComponent(inviteCode ?? "")}`);
+  const nextPath = await getMagicLinkRedirectPath(email, inviteCode);
+  const callbackUrl =
+    nextPath === "/"
+      ? `${origin}/auth/callback`
+      : `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${origin}/auth/callback?next=${next}`,
+      emailRedirectTo: callbackUrl,
     },
   });
 

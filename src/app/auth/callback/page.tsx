@@ -24,6 +24,13 @@ function AuthCallbackWorker() {
       const supabase = createClient();
       const code = searchParams.get("code");
       const next = searchParams.get("next") ?? "/";
+      const callbackError =
+        searchParams.get("error") ?? getHashParams().get("error");
+
+      if (callbackError) {
+        router.replace("/login?message=auth-link-denied");
+        return;
+      }
 
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
