@@ -21,6 +21,11 @@ export function SpecialPickCard({
   const hasGoalsTip = kind === "goals" && typeof totalGoals === "number";
   const hasTip = hasChampionTip || hasGoalsTip;
   const focus = kind === "champion" ? "champion" : "goals";
+  const actionLabel = hasTip
+    ? kind === "champion"
+      ? "Weltmeister ändern"
+      : "Tore ändern"
+    : "Tippen";
 
   return (
     <Link
@@ -65,7 +70,7 @@ export function SpecialPickCard({
         </div>
       </div>
       <span className="rounded-lg bg-yellow-200 px-4 py-2 text-center text-sm font-black text-yellow-950">
-        {hasTip ? "Tipp ändern" : "Tippen"}
+        {actionLabel}
       </span>
     </Link>
   );
