@@ -5,7 +5,7 @@ import { getSupabaseConfig, isSupabaseConfigured } from "./config";
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const publicPaths = ["/login", "/auth/callback", "/rules"];
+  const publicPaths = ["/login", "/auth/callback", "/reset-password", "/rules"];
   const localUser = getLocalTestUser();
 
   if (localUser) {

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { SubmitButton } from "@/components/app/submit-button";
 import { signInWithMagicLink, signInWithPassword } from "@/lib/auth/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -72,16 +73,30 @@ export default async function LoginPage({
               type="text"
             />
           </label>
-          <label className="block">
-            <span className="text-sm font-bold text-zinc-700">Passwort</span>
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <label
+                className="text-sm font-bold text-zinc-700"
+                htmlFor="login-password"
+              >
+                Passwort
+              </label>
+              <Link
+                className="text-xs font-black text-emerald-800 hover:text-emerald-950"
+                href="/reset-password"
+              >
+                Passwort vergessen?
+              </Link>
+            </div>
             <input
               autoComplete="current-password"
+              id="login-password"
               className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-emerald-800"
               name="password"
               placeholder="Mindestens 6 Zeichen"
               type="password"
             />
-          </label>
+          </div>
           <SubmitButton
             className="w-full rounded-lg bg-zinc-950 px-4 py-3 text-sm font-black text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
             disabled={!configured}

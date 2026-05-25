@@ -208,6 +208,72 @@ export async function signInWithPassword(formData: FormData) {
   redirect("/");
 }
 
+export async function requestPasswordReset(formData: FormData) {
+  if (!isSupabaseConfigured()) {
+    redirect("/reset-password?message=supabase-not-configured");
+  }
+
+  const email = getEmail(formData);
+
+  if (!email) {
+    redirect("/reset-password?message=invalid-email");
+  }
+
+  const supabase = await createClient();
+  const origin = await getOrigin();
+  const callbackUrl = `${origin}/auth/callback?next=${encodeURIComponent(
+    "/reset-password",
+  )}`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: callbackUrl,
+  });
+
+  if (error) {
+    const message = error.message.toLowerCase().includes("rate limit")
+      ? "email-rate-limit"
+      : "reset-request-failed";
+
+    redirect(`/reset-password?message=${message}`);
+  }
+
+  redirect("/reset-password?message=reset-email-sent");
+}
+
+export async function updatePassword(formData: FormData) {
+  if (!isSupabaseConfigured()) {
+    redirect("/reset-password?message=supabase-not-configured");
+  }
+
+  const password = getPassword(formData);
+  const passwordConfirm = formData.get("passwordConfirm");
+
+  if (!password) {
+    redirect("/reset-password?message=invalid-password");
+  }
+
+  if (typeof passwordConfirm !== "string" || passwordConfirm !== password) {
+    redirect("/reset-password?message=password-mismatch");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/reset-password?message=reset-link-expired");
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    redirect("/reset-password?message=reset-update-failed");
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
 export async function completeOnboarding(formData: FormData) {
   if (!isSupabaseConfigured() || !isDatabaseConfigured()) {
     redirect("/login?message=supabase-not-configured");
