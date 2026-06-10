@@ -1,11 +1,18 @@
 import { notFound } from "next/navigation";
 import { DataModeBanner } from "@/components/app/data-mode-banner";
 import { StatusChip, Surface } from "@/components/app/primitives";
-import { getAdminDashboardData, type AdminUserRow } from "@/lib/admin";
+import {
+  getAdminDashboardData,
+  type AdminMatchCorrectionRow,
+  type AdminProviderSyncLogRow,
+  type AdminUserRow,
+} from "@/lib/admin";
+import { getStageLabel, getTeamLabel } from "@/lib/tournament-data";
 import { cn } from "@/lib/utils";
 import {
   deleteTestProfile,
   resetUserOnboarding,
+  updateMatchCorrection,
   updateUserAdminRole,
   updateUserDisplayName,
   updateUserPredictionRows,
@@ -14,6 +21,7 @@ import {
 const messages: Record<string, string> = {
   "invalid-input": "Eingabe konnte nicht verarbeitet werden.",
   locked: "Diese Aktion ist nach Turnierstart gesperrt.",
+  "match-missing": "Das Spiel wurde nicht gefunden.",
   "name-taken": "Dieser Anzeigename ist bereits vergeben.",
   saved: "Gespeichert.",
   "self-demote": "Du kannst dir nicht selbst die Adminrechte entziehen.",
@@ -40,6 +48,257 @@ function SummaryTile({
     <Surface className="p-4">
       <div className="text-sm font-semibold text-zinc-500">{label}</div>
       <div className="mt-2 text-3xl font-black text-zinc-950">{value}</div>
+    </Surface>
+  );
+}
+
+function statusKind(status: string) {
+  if (status === "live") return "live";
+  if (status === "done") return "done";
+  if (status === "upcoming") return "upcoming";
+
+  return "locked";
+}
+
+function matchSideLabel(code: string | null, placeholder: string | null) {
+  return code ? getTeamLabel(code) : placeholder ?? "TBD";
+}
+
+function scoreValue(value: number | null) {
+  return value === null ? "" : String(value);
+}
+
+function SyncStatusSummary({
+  syncLog,
+}: {
+  syncLog: AdminProviderSyncLogRow | null;
+}) {
+  if (!syncLog) {
+    return (
+      <div className="rounded-lg bg-zinc-50 p-3 text-sm font-semibold text-zinc-500">
+        Noch kein football-data Sync protokolliert.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 rounded-lg bg-zinc-50 p-3 text-sm font-semibold text-zinc-600 md:grid-cols-4">
+      <div>
+        <div className="text-[0.65rem] font-black uppercase text-zinc-500">
+          Letzter Sync
+        </div>
+        <div className="mt-1 font-black text-zinc-950">
+          {formatDate(syncLog.startedAt)}
+        </div>
+      </div>
+      <div>
+        <div className="text-[0.65rem] font-black uppercase text-zinc-500">
+          Typ
+        </div>
+        <div className="mt-1 font-black text-zinc-950">{syncLog.syncType}</div>
+      </div>
+      <div>
+        <div className="text-[0.65rem] font-black uppercase text-zinc-500">
+          Status
+        </div>
+        <div className="mt-1 font-black text-zinc-950">{syncLog.status}</div>
+      </div>
+      <div className="md:col-span-1">
+        <div className="text-[0.65rem] font-black uppercase text-zinc-500">
+          Meldung
+        </div>
+        <div className="mt-1 break-words">{syncLog.message ?? "-"}</div>
+      </div>
+    </div>
+  );
+}
+
+function MatchCorrectionRow({ match }: { match: AdminMatchCorrectionRow }) {
+  const home = matchSideLabel(match.homeTeamCode, match.homePlaceholder);
+  const away = matchSideLabel(match.awayTeamCode, match.awayPlaceholder);
+  const score =
+    match.homeScore !== null && match.awayScore !== null
+      ? `${match.homeScore}:${match.awayScore}`
+      : "-";
+
+  return (
+    <div className="border-t border-zinc-100 py-4">
+      <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-black text-zinc-950">
+              #{match.gameId ?? "-"} {home} - {away}
+            </span>
+            <StatusChip kind={statusKind(match.status)}>
+              {match.status}
+            </StatusChip>
+            {match.footballDataMatchId ? (
+              <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-bold text-zinc-600">
+                FD {match.footballDataMatchId}
+              </span>
+            ) : null}
+          </div>
+          <div className="mt-1 text-xs font-semibold text-zinc-500">
+            {getStageLabel(match.groupName ?? match.stage)} ·{" "}
+            {formatDate(match.kickoffAt)} · Provider {match.providerStatus}
+          </div>
+        </div>
+        <div className="text-sm font-black text-zinc-950">{score}</div>
+      </div>
+
+      <form action={updateMatchCorrection} className="grid gap-3 lg:grid-cols-12">
+        <input name="matchId" type="hidden" value={match.id} />
+        <label className="lg:col-span-2">
+          <span className="text-[0.65rem] font-black uppercase text-zinc-500">
+            App Status
+          </span>
+          <select
+            className="mt-1 h-10 w-full rounded-lg border border-zinc-300 bg-white px-2 text-sm font-semibold text-zinc-950 outline-none focus:border-emerald-800"
+            defaultValue={match.status}
+            name="status"
+          >
+            <option value="upcoming">Automatisch</option>
+            <option value="live">Live</option>
+            <option value="done">Done</option>
+          </select>
+        </label>
+
+        <label className="lg:col-span-1">
+          <span className="text-[0.65rem] font-black uppercase text-zinc-500">
+            Heim
+          </span>
+          <input
+            className="mt-1 h-10 w-full rounded-lg border border-zinc-300 bg-white px-2 text-sm font-semibold text-zinc-950 outline-none focus:border-emerald-800"
+            defaultValue={scoreValue(match.homeScore)}
+            inputMode="numeric"
+            max={99}
+            min={0}
+            name="homeScore"
+            type="number"
+          />
+        </label>
+
+        <label className="lg:col-span-1">
+          <span className="text-[0.65rem] font-black uppercase text-zinc-500">
+            Ausw.
+          </span>
+          <input
+            className="mt-1 h-10 w-full rounded-lg border border-zinc-300 bg-white px-2 text-sm font-semibold text-zinc-950 outline-none focus:border-emerald-800"
+            defaultValue={scoreValue(match.awayScore)}
+            inputMode="numeric"
+            max={99}
+            min={0}
+            name="awayScore"
+            type="number"
+          />
+        </label>
+
+        <label className="lg:col-span-1">
+          <span className="text-[0.65rem] font-black uppercase text-zinc-500">
+            Elf. H
+          </span>
+          <input
+            className="mt-1 h-10 w-full rounded-lg border border-zinc-300 bg-white px-2 text-sm font-semibold text-zinc-950 outline-none focus:border-emerald-800"
+            defaultValue={scoreValue(match.homePenaltyScore)}
+            inputMode="numeric"
+            max={99}
+            min={0}
+            name="homePenaltyScore"
+            type="number"
+          />
+        </label>
+
+        <label className="lg:col-span-1">
+          <span className="text-[0.65rem] font-black uppercase text-zinc-500">
+            Elf. A
+          </span>
+          <input
+            className="mt-1 h-10 w-full rounded-lg border border-zinc-300 bg-white px-2 text-sm font-semibold text-zinc-950 outline-none focus:border-emerald-800"
+            defaultValue={scoreValue(match.awayPenaltyScore)}
+            inputMode="numeric"
+            max={99}
+            min={0}
+            name="awayPenaltyScore"
+            type="number"
+          />
+        </label>
+
+        <label className="lg:col-span-2">
+          <span className="text-[0.65rem] font-black uppercase text-zinc-500">
+            Ergebnisart
+          </span>
+          <select
+            className="mt-1 h-10 w-full rounded-lg border border-zinc-300 bg-white px-2 text-sm font-semibold text-zinc-950 outline-none focus:border-emerald-800"
+            defaultValue={match.resultType ?? ""}
+            name="resultType"
+          >
+            <option value="">-</option>
+            <option value="REGULAR">REGULAR</option>
+            <option value="EXTRA_TIME">EXTRA_TIME</option>
+            <option value="PENALTY_SHOOTOUT">PENALTY_SHOOTOUT</option>
+            <option value="AWARDED">AWARDED</option>
+            <option value="ADMIN_CORRECTION">ADMIN_CORRECTION</option>
+          </select>
+        </label>
+
+        <label className="lg:col-span-2">
+          <span className="text-[0.65rem] font-black uppercase text-zinc-500">
+            Notiz
+          </span>
+          <input
+            className="mt-1 h-10 w-full rounded-lg border border-zinc-300 bg-white px-2 text-sm font-semibold text-zinc-950 outline-none focus:border-emerald-800"
+            defaultValue={match.adminNote ?? ""}
+            maxLength={500}
+            name="adminNote"
+            type="text"
+          />
+        </label>
+
+        <div className="flex items-end lg:col-span-1">
+          <button className="h-10 w-full rounded-lg bg-zinc-950 px-3 text-sm font-black text-white hover:bg-zinc-800">
+            Speichern
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function MatchCorrectionSection({
+  matches,
+  syncLog,
+}: {
+  matches: AdminMatchCorrectionRow[];
+  syncLog: AdminProviderSyncLogRow | null;
+}) {
+  const mappedCount = matches.filter((match) => match.footballDataMatchId).length;
+
+  return (
+    <Surface className="mb-6 p-4">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h2 className="text-sm font-bold uppercase text-zinc-500">
+            Live Sync / Ergebnis-Korrektur
+          </h2>
+          <p className="mt-1 text-sm font-semibold text-zinc-500">
+            {mappedCount} von {matches.length} Spielen sind mit football-data
+            verknüpft.
+          </p>
+        </div>
+      </div>
+
+      <SyncStatusSummary syncLog={syncLog} />
+
+      <details className="mt-4">
+        <summary className="cursor-pointer text-sm font-black text-emerald-800">
+          Spiele zur Korrektur öffnen
+        </summary>
+        <div className="mt-3">
+          {matches.map((match) => (
+            <MatchCorrectionRow key={match.id} match={match} />
+          ))}
+        </div>
+      </details>
     </Surface>
   );
 }
@@ -268,6 +527,11 @@ export default async function AdminPage({
         <SummaryTile label="Spieltipps" value={data.totals.predictions} />
         <SummaryTile label="Spezialtipps" value={data.totals.specialPredictions} />
       </div>
+
+      <MatchCorrectionSection
+        matches={data.matches}
+        syncLog={data.providerSyncLog}
+      />
 
       <section className="space-y-3">
         <h2 className="text-sm font-bold uppercase text-zinc-500">

@@ -1,14 +1,17 @@
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb, isDatabaseConfigured } from "@/db";
 import {
   adminAuditLog,
   leagueMembers,
   leagues,
+  matches,
   predictions,
   profiles,
+  providerSyncLog,
   specialPredictions,
 } from "@/db/schema";
+import { FOOTBALL_DATA_PROVIDER } from "@/lib/football-data/provider";
 import { DEFAULT_LEAGUE_SLUG } from "@/lib/app-data";
 import { SPECIAL_PICKS_LOCK_AT } from "@/lib/special-picks/constants";
 import { getCurrentUser } from "./auth/session";
@@ -35,9 +38,42 @@ export type AdminUserRow = {
   rowTwoSpecialPredictionCount: number;
 };
 
+export type AdminProviderSyncLogRow = {
+  id: string;
+  status: string;
+  syncType: string;
+  message: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+};
+
+export type AdminMatchCorrectionRow = {
+  id: string;
+  awayPenaltyScore: number | null;
+  awayScore: number | null;
+  awayTeamCode: string | null;
+  awayPlaceholder: string | null;
+  footballDataMatchId: number | null;
+  gameId: number | null;
+  groupName: string | null;
+  homePenaltyScore: number | null;
+  homeScore: number | null;
+  homeTeamCode: string | null;
+  homePlaceholder: string | null;
+  kickoffAt: string;
+  lastProviderSyncAt: string | null;
+  providerStatus: string;
+  resultType: string | null;
+  stage: string;
+  status: string;
+  adminNote: string | null;
+};
+
 export type AdminDashboardData = {
   canManageBeforeStart: boolean;
   currentUserId: string;
+  matches: AdminMatchCorrectionRow[];
+  providerSyncLog: AdminProviderSyncLogRow | null;
   users: AdminUserRow[];
   totals: {
     admins: number;
@@ -120,7 +156,14 @@ export async function getAdminDashboardData() {
     .from(leagues)
     .where(eq(leagues.slug, DEFAULT_LEAGUE_SLUG))
     .limit(1);
-  const [profileRows, memberRows, predictionRows, specialRows] =
+  const [
+    profileRows,
+    memberRows,
+    predictionRows,
+    specialRows,
+    matchRows,
+    syncLogRows,
+  ] =
     await Promise.all([
       db.select().from(profiles).orderBy(desc(profiles.createdAt)),
       league
@@ -138,6 +181,13 @@ export async function getAdminDashboardData() {
             .from(specialPredictions)
             .where(eq(specialPredictions.leagueId, league.id))
         : [],
+      db.select().from(matches).orderBy(asc(matches.kickoffAt)),
+      db
+        .select()
+        .from(providerSyncLog)
+        .where(eq(providerSyncLog.provider, FOOTBALL_DATA_PROVIDER))
+        .orderBy(desc(providerSyncLog.startedAt))
+        .limit(1),
     ]);
   const memberByUser = new Map(memberRows.map((member) => [member.userId, member]));
   const predictionCounts = new Map<string, number>();
@@ -196,6 +246,37 @@ export async function getAdminDashboardData() {
   return {
     canManageBeforeStart: canManageBeforeStart(),
     currentUserId: context.profileId,
+    matches: matchRows.map((match) => ({
+      id: match.id,
+      adminNote: match.adminNote,
+      awayPenaltyScore: match.awayPenaltyScore,
+      awayPlaceholder: match.awayPlaceholder,
+      awayScore: match.awayScore,
+      awayTeamCode: match.awayTeamCode,
+      footballDataMatchId: match.footballDataMatchId,
+      gameId: match.gameId,
+      groupName: match.groupName,
+      homePenaltyScore: match.homePenaltyScore,
+      homePlaceholder: match.homePlaceholder,
+      homeScore: match.homeScore,
+      homeTeamCode: match.homeTeamCode,
+      kickoffAt: match.kickoffAt.toISOString(),
+      lastProviderSyncAt: match.lastProviderSyncAt?.toISOString() ?? null,
+      providerStatus: match.providerStatus,
+      resultType: match.resultType,
+      stage: match.stage,
+      status: match.status,
+    })),
+    providerSyncLog: syncLogRows[0]
+      ? {
+          id: syncLogRows[0].id,
+          finishedAt: syncLogRows[0].finishedAt?.toISOString() ?? null,
+          message: syncLogRows[0].message,
+          startedAt: syncLogRows[0].startedAt.toISOString(),
+          status: syncLogRows[0].status,
+          syncType: syncLogRows[0].syncType,
+        }
+      : null,
     users,
     totals: {
       admins: users.filter((user) => user.appRole === "admin").length,

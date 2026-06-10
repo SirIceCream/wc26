@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { SubmitButton } from "@/components/app/submit-button";
-import { completeOnboarding } from "@/lib/auth/actions";
+import { completeOnboarding, signOut } from "@/lib/auth/actions";
 import { getCurrentUser } from "@/lib/auth/session";
+import { isSignupEnabled } from "@/lib/auth/signup";
 
 const messages: Record<string, string> = {
   "auth-update-failed": "Das Passwort konnte nicht gespeichert werden.",
@@ -9,6 +10,7 @@ const messages: Record<string, string> = {
   "invalid-name": "Bitte gib einen Namen mit 2 bis 40 Zeichen ein.",
   "invalid-password": "Das Passwort muss mindestens 6 Zeichen haben.",
   "name-taken": "Dieser Name ist schon vergeben.",
+  "signups-closed": "Die Anmeldung für neue Teilnehmer ist geschlossen.",
 };
 
 export default async function OnboardingPage({
@@ -24,10 +26,47 @@ export default async function OnboardingPage({
 
   const { invite, message } = await searchParams;
   const statusMessage = message ? messages[message] : null;
+  const signupEnabled = isSignupEnabled();
   const suggestedName =
     typeof user.user_metadata.display_name === "string"
       ? user.user_metadata.display_name
       : user.email?.split("@")[0] ?? "";
+
+  if (!signupEnabled) {
+    return (
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-3xl content-center px-4 py-6 sm:px-6">
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-bold uppercase text-emerald-800">
+            Anmeldung geschlossen
+          </p>
+          <h1 className="mt-2 text-3xl font-black text-zinc-950">
+            Neue Teilnehmer können nicht mehr beitreten
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
+            Das Teilnehmerfeld für das Jackpotspiel 2026 ist geschlossen.
+            Bestehende Teilnehmer können sich weiterhin mit ihrem Passwort
+            einloggen.
+          </p>
+
+          {statusMessage ? (
+            <div className="mt-5 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm font-semibold text-yellow-950">
+              {statusMessage}
+            </div>
+          ) : null}
+
+          <form action={signOut} className="mt-6">
+            <SubmitButton
+              className="rounded-lg bg-zinc-950 px-4 py-3 text-sm font-black text-white hover:bg-zinc-800 disabled:cursor-wait disabled:bg-zinc-300"
+              pendingLabel="Meldet ab..."
+              type="submit"
+            >
+              Zurück zum Login
+            </SubmitButton>
+          </form>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-3xl content-center px-4 py-6 sm:px-6">

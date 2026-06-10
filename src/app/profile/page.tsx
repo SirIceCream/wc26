@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DataModeBanner } from "@/components/app/data-mode-banner";
 import { ProfileResults } from "@/components/app/profile-results";
+import { ProfileSpecialPickReveal } from "@/components/app/profile-special-pick-reveal";
 import { ProfileSpecialPicks } from "@/components/app/profile-special-picks";
 import { Surface } from "@/components/app/primitives";
 import { getAppData } from "@/lib/app-data";
@@ -119,6 +120,17 @@ export default async function ProfilePage() {
           predictionEntries={data.predictionEntries}
           predictionsByRow={data.specialPredictions}
           teams={teamOptions}
+        />
+      </section>
+
+      <section className="mt-7 space-y-3">
+        <h2 className="text-sm font-bold uppercase text-zinc-500">
+          Alle Spezialtipps
+        </h2>
+        <ProfileSpecialPickReveal
+          deadlineAt={data.specialPickDeadlineAt}
+          entries={data.specialPickRevealEntries}
+          revealable={data.specialPicksRevealable}
         />
       </section>
 

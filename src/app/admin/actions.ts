@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import {
   leagueMembers,
+  matches,
   predictions,
   profiles,
   specialPredictions,
@@ -31,6 +32,66 @@ function getDisplayName(formData: FormData) {
   const trimmed = displayName.trim().replace(/\s+/g, " ");
 
   return trimmed.length >= 2 && trimmed.length <= 40 ? trimmed : null;
+}
+
+function getMatchId(formData: FormData) {
+  const matchId = formData.get("matchId");
+
+  return typeof matchId === "string" && matchId ? matchId : null;
+}
+
+function getOptionalScore(formData: FormData, name: string) {
+  const value = formData.get(name);
+
+  if (typeof value !== "string" || value.trim() === "") return null;
+
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 99) {
+    adminRedirect("invalid-input");
+  }
+
+  return parsed;
+}
+
+function getOptionalText(formData: FormData, name: string, maxLength: number) {
+  const value = formData.get(name);
+
+  if (typeof value !== "string") return null;
+
+  const trimmed = value.trim();
+
+  if (!trimmed) return null;
+
+  return trimmed.slice(0, maxLength);
+}
+
+function getMatchStatus(formData: FormData) {
+  const status = formData.get("status");
+
+  if (status === "upcoming" || status === "live" || status === "done") {
+    return status;
+  }
+
+  adminRedirect("invalid-input");
+}
+
+function getResultType(formData: FormData) {
+  const resultType = formData.get("resultType");
+
+  if (typeof resultType !== "string" || resultType === "") return null;
+
+  if (
+    resultType === "REGULAR" ||
+    resultType === "EXTRA_TIME" ||
+    resultType === "PENALTY_SHOOTOUT" ||
+    resultType === "AWARDED" ||
+    resultType === "ADMIN_CORRECTION"
+  ) {
+    return resultType;
+  }
+
+  adminRedirect("invalid-input");
 }
 
 function adminRedirect(message: string): never {
@@ -289,5 +350,87 @@ export async function updateUserAdminRole(formData: FormData) {
   });
 
   revalidatePath("/admin");
+  adminRedirect("saved");
+}
+
+export async function updateMatchCorrection(formData: FormData) {
+  const context = await requireAdminContext();
+  const matchId = getMatchId(formData);
+  const status = getMatchStatus(formData);
+  const homeScore = getOptionalScore(formData, "homeScore");
+  const awayScore = getOptionalScore(formData, "awayScore");
+  const homePenaltyScore = getOptionalScore(formData, "homePenaltyScore");
+  const awayPenaltyScore = getOptionalScore(formData, "awayPenaltyScore");
+  const resultType = getResultType(formData);
+  const adminNote = getOptionalText(formData, "adminNote", 500);
+
+  if (!matchId) {
+    adminRedirect("invalid-input");
+  }
+
+  if ((homeScore === null) !== (awayScore === null)) {
+    adminRedirect("invalid-input");
+  }
+
+  if ((homePenaltyScore === null) !== (awayPenaltyScore === null)) {
+    adminRedirect("invalid-input");
+  }
+
+  if (status === "done" && (homeScore === null || awayScore === null)) {
+    adminRedirect("invalid-input");
+  }
+
+  const [before] = await context.db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, matchId))
+    .limit(1);
+
+  if (!before) {
+    adminRedirect("match-missing");
+  }
+
+  const afterData = {
+    adminNote,
+    awayPenaltyScore,
+    awayScore,
+    homePenaltyScore,
+    homeScore,
+    resultType,
+    status,
+  };
+
+  await context.db
+    .update(matches)
+    .set({
+      ...afterData,
+      liveMinute: status === "live" ? before.liveMinute : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(matches.id, matchId));
+  await logAdminAction({
+    action: "update_match_correction",
+    actorUserId: context.profileId,
+    beforeData: {
+      adminNote: before.adminNote,
+      awayPenaltyScore: before.awayPenaltyScore,
+      awayScore: before.awayScore,
+      homePenaltyScore: before.homePenaltyScore,
+      homeScore: before.homeScore,
+      resultType: before.resultType,
+      status: before.status,
+    },
+    afterData,
+    entityId: matchId,
+    entityType: "match",
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath("/fixtures");
+  revalidatePath("/leaderboard");
+  revalidatePath("/predict");
+  revalidatePath("/profile");
+  revalidatePath(`/match/${matchId}`);
   adminRedirect("saved");
 }
