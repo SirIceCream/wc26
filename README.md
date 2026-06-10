@@ -32,6 +32,7 @@ Private friends-only World Cup 2026 prediction app starter.
    NEXT_PUBLIC_SUPABASE_URL=...
    NEXT_PUBLIC_SUPABASE_ANON_KEY=...
    NEXT_PUBLIC_APP_URL=http://localhost:3000
+   SIGNUPS_ENABLED=false
    SIGNUP_INVITE_CODE=...
    ADMIN_EMAILS=you@example.com
    DATABASE_URL=...
@@ -54,6 +55,13 @@ npm run dev -- --hostname 0.0.0.0
 The current Windows dev setup forwards `10.0.0.233:3000` to the WSL dev
 server. If that IP changes, update `allowedDevOrigins` in `next.config.ts` and
 the Windows port proxy/firewall rule.
+
+### Signup Window
+
+New participant signup is closed by default. Set `SIGNUPS_ENABLED=true` only
+while the first-access invite flow should be available. When it is `false` or
+missing, the login page only shows existing-user password login and onboarding
+submissions are rejected.
 
 ### Local Test User
 

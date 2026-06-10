@@ -49,6 +49,8 @@ export type AppData = {
   profileResults: ProfileResultRow[];
   recentResults: Match[];
   specialPickDeadlineAt: string;
+  specialPickRevealEntries: SpecialPickRevealEntry[];
+  specialPicksRevealable: boolean;
   specialPredictions: SpecialPredictionsByRow;
   todayMatches: Match[];
   tournamentProgress: TournamentProgress;
@@ -64,6 +66,17 @@ export type SpecialPrediction = {
 };
 
 export type SpecialPredictionsByRow = Record<number, SpecialPrediction>;
+
+export type SpecialPickRevealEntry = {
+  id: string;
+  championTeamCode: string | null;
+  entryLabel: string;
+  entryName: string;
+  ownerName: string;
+  predictionRow: number;
+  totalGoals: number | null;
+  isCurrentUser: boolean;
+};
 
 export type ProfileResultRow = {
   id: string;
@@ -184,6 +197,8 @@ function seedData(
     profileResults: [],
     recentResults: seedRecentResults,
     specialPickDeadlineAt: SPECIAL_PICKS_LOCK_AT,
+    specialPickRevealEntries: [],
+    specialPicksRevealable: false,
     specialPredictions: {},
     todayMatches: seedTodayMatches,
     tournamentProgress: buildTournamentProgress(0),
@@ -347,7 +362,7 @@ function inferStatus(match: {
   lockedAt: Date;
 }): MatchStatus {
   if (match.status === "live") return "live";
-  if (match.status === "done" || (match.homeScore !== null && match.awayScore !== null)) {
+  if (match.status === "done") {
     return "done";
   }
   if (!match.homeTeamCode || !match.awayTeamCode) return "upcoming";
@@ -382,8 +397,14 @@ function mapMatch(
     status,
     venue: match.venue ?? undefined,
     deadline: status === "open" ? "Sperrt vor Anpfiff" : undefined,
+    minute:
+      status === "live" && match.liveMinute !== null
+        ? `${match.liveMinute}'`
+        : undefined,
     score:
-      match.homeScore !== null && match.awayScore !== null
+      (status === "live" || status === "done") &&
+      match.homeScore !== null &&
+      match.awayScore !== null
         ? { home: match.homeScore, away: match.awayScore }
         : undefined,
     prediction: primaryPrediction
@@ -412,6 +433,7 @@ function floorToCents(value: number) {
 
 type DbMatch = typeof matches.$inferSelect;
 type DbPrediction = typeof predictions.$inferSelect;
+type DbSpecialPrediction = typeof specialPredictions.$inferSelect;
 type LeagueMemberRead = {
   userId: string;
   usesTwoPredictionRows: boolean;
@@ -591,6 +613,37 @@ function buildProfileResults({
       };
     });
   });
+}
+
+function buildSpecialPickRevealEntries({
+  currentUserId,
+  memberRows,
+  specialPredictions,
+}: {
+  currentUserId: string | null;
+  memberRows: LeagueMemberRead[];
+  specialPredictions: DbSpecialPrediction[];
+}) {
+  return memberRows.flatMap((member) =>
+    getPredictionRows(member).map((predictionRow) => {
+      const prediction = specialPredictions.find(
+        (candidate) =>
+          candidate.userId === member.userId &&
+          candidate.predictionRow === predictionRow,
+      );
+
+      return {
+        id: `${member.userId}-${predictionRow}`,
+        championTeamCode: prediction?.championTeamCode ?? null,
+        entryLabel: `Tippreihe ${predictionRow}`,
+        entryName: getEntryName(member, predictionRow),
+        ownerName: member.displayName,
+        predictionRow,
+        totalGoals: prediction?.totalGoals ?? null,
+        isCurrentUser: member.userId === currentUserId,
+      };
+    }),
+  );
 }
 
 function countMissedPredictions({
@@ -809,7 +862,9 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
         const exact = memberPredictions.filter((prediction) => {
           const match = dbMatches.find((dbMatch) => dbMatch.id === prediction.matchId);
 
-          return match ? isExactPrediction(match, prediction) : false;
+          return match?.status === "done"
+            ? isExactPrediction(match, prediction)
+            : false;
         }).length;
         const winningsEuros =
           winningsByEntry.get(predictionEntryKey(member.userId, predictionRow)) ??
@@ -850,6 +905,7 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     (member) => member.userId === context.profileId,
   );
   const currentUserHasTwoRows = Boolean(currentMember?.usesTwoPredictionRows);
+  const specialPicksRevealable = new Date(SPECIAL_PICKS_LOCK_AT) <= new Date();
   const currentOwnerName =
     currentMember?.displayName ??
     context.displayName ??
@@ -898,6 +954,14 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     profileResults,
     recentResults,
     specialPickDeadlineAt: SPECIAL_PICKS_LOCK_AT,
+    specialPickRevealEntries: specialPicksRevealable
+      ? buildSpecialPickRevealEntries({
+          currentUserId: context.profileId,
+          memberRows,
+          specialPredictions: dbSpecialPredictions,
+        })
+      : [],
+    specialPicksRevealable,
     specialPredictions: currentUserSpecialPredictions,
     todayMatches: todayMatches.length
       ? todayMatches

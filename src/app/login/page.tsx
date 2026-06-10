@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SubmitButton } from "@/components/app/submit-button";
-import { signInWithMagicLink, signInWithPassword } from "@/lib/auth/actions";
+import { signInWithPassword } from "@/lib/auth/actions";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import logo from "../../../resources/logo.jpg";
 
@@ -18,6 +18,7 @@ const messages: Record<string, string> = {
   "invalid-password": "Das Passwort muss mindestens 6 Zeichen haben.",
   "login-required": "Melde dich zuerst an.",
   "signed-out": "Du wurdest abgemeldet.",
+  "signups-closed": "Die Anmeldung für neue Teilnehmer ist geschlossen.",
   "supabase-not-configured":
     "Der Login ist noch nicht fertig konfiguriert.",
 };
@@ -37,30 +38,46 @@ export default async function LoginPage({
         : null;
 
   return (
-    <div className="mx-auto grid min-h-screen max-w-4xl content-center gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_24rem] lg:py-10">
-      <section className="rounded-lg bg-emerald-900 p-6 text-white shadow-sm">
-        <Image
-          alt="WC26 Jackpotspiel"
-          className="h-20 w-20 rounded-lg object-cover ring-1 ring-white/20"
-          priority
-          src={logo}
-        />
-        <h1 className="mt-3 max-w-xl text-4xl font-black">
-          Jackpotspiel 2026
-        </h1>
-        <p className="mt-4 max-w-xl text-sm leading-6 text-emerald-50">
-          Melde dich an, gib deine Tipps ab und knacke den Jackpot!
-        </p>
+    <div className="mx-auto grid min-h-screen max-w-5xl content-center gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_24rem] lg:py-10">
+      <section className="overflow-hidden rounded-lg bg-emerald-900 text-white shadow-sm">
+        <div className="flex h-full flex-col justify-between gap-8 p-6 sm:p-8">
+          <div>
+            <Image
+              alt="WC26 Jackpotspiel"
+              className="h-20 w-20 rounded-lg object-cover ring-1 ring-white/20"
+              priority
+              src={logo}
+            />
+            <h1 className="mt-4 max-w-xl text-4xl font-black">
+              Jackpotspiel 2026
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-emerald-50">
+              Melde dich mit deinem bestehenden Konto an und gib deine Tipps
+              rechtzeitig vor dem Anpfiff ab.
+            </p>
+          </div>
+          <div className="rounded-lg bg-white/10 px-4 py-3 text-sm font-semibold leading-6 text-emerald-50 ring-1 ring-white/15">
+            Die Anmeldung für neue Teilnehmer ist geschlossen. Bestehende
+            Teilnehmer können sich weiterhin einloggen.
+          </div>
+        </div>
       </section>
 
-      <section className="space-y-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-black text-zinc-950">Anmelden</h2>
+      <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+        <div>
+          <p className="text-xs font-black uppercase text-emerald-800">
+            Bestehendes Konto
+          </p>
+          <h2 className="mt-2 text-2xl font-black text-zinc-950">
+            Einloggen
+          </h2>
+        </div>
         {statusMessage ? (
           <div className="mt-4 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm font-semibold text-yellow-950">
             {statusMessage}
           </div>
         ) : null}
-        <form action={signInWithPassword} className="space-y-4">
+        <form action={signInWithPassword} className="mt-5 space-y-4">
           <label className="block">
             <span className="text-sm font-bold text-zinc-700">
               Name oder E-Mail
@@ -104,49 +121,6 @@ export default async function LoginPage({
             type="submit"
           >
             Einloggen
-          </SubmitButton>
-        </form>
-
-        <div className="border-t border-zinc-200 pt-4">
-          <h3 className="text-sm font-black uppercase text-zinc-500">
-            Erster Zugang
-          </h3>
-          <p className="mt-2 text-xs leading-5 text-zinc-500">
-            Noch kein Passwort? Fordere mit deinem Einladungscode einen
-            Login-Link an.
-          </p>
-        </div>
-
-        <form action={signInWithMagicLink} className="space-y-4">
-          <label className="block">
-            <span className="text-sm font-bold text-zinc-700">E-Mail</span>
-            <input
-              autoComplete="email"
-              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-emerald-800"
-              name="email"
-              placeholder="du@example.com"
-              type="email"
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-bold text-zinc-700">
-              Einladungscode
-            </span>
-            <input
-              autoComplete="off"
-              className="mt-2 w-full rounded-lg border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-emerald-800"
-              name="inviteCode"
-              placeholder="Code"
-              type="text"
-            />
-          </label>
-          <SubmitButton
-            className="w-full rounded-lg bg-zinc-950 px-4 py-3 text-sm font-black text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
-            disabled={!configured}
-            pendingLabel="Sendet Link..."
-            type="submit"
-          >
-            Login-Link anfordern
           </SubmitButton>
         </form>
       </section>

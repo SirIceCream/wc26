@@ -10,6 +10,7 @@ import { DEFAULT_LEAGUE_SLUG } from "@/lib/app-data";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./session";
+import { isSignupEnabled } from "./signup";
 
 const DEFAULT_LEAGUE_NAME = "Private League";
 
@@ -121,6 +122,10 @@ export async function signInWithMagicLink(formData: FormData) {
     redirect("/login?message=supabase-not-configured");
   }
 
+  if (!isSignupEnabled()) {
+    redirect("/login?message=signups-closed");
+  }
+
   const email = getEmail(formData);
   const inviteCode = getInviteCode(formData);
 
@@ -143,6 +148,7 @@ export async function signInWithMagicLink(formData: FormData) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
+      shouldCreateUser: true,
       emailRedirectTo: callbackUrl,
     },
   });
@@ -283,6 +289,10 @@ export async function completeOnboarding(formData: FormData) {
 
   if (!user) {
     redirect("/login?message=login-required");
+  }
+
+  if (!isSignupEnabled()) {
+    redirect("/onboarding?message=signups-closed");
   }
 
   const displayName = getDisplayName(formData);

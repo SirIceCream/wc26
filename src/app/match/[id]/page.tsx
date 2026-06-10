@@ -258,6 +258,9 @@ export default async function MatchIntegrityPage({
               <StatusChip kind={statusKind(data.match.status)}>
                 {statusLabel(data.match.status)}
               </StatusChip>
+              {data.match.status === "live" && data.match.minute ? (
+                <StatusChip kind="live">{data.match.minute}</StatusChip>
+              ) : null}
               <span className="text-xs font-bold uppercase text-zinc-500">
                 {getStageLabel(data.match.stage)} · {data.match.time}
               </span>
