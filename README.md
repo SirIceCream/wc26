@@ -138,6 +138,11 @@ private league policies.
 Connect this repository to Vercel and add the same environment variables in the
 Vercel project settings.
 
+The live-score sync route is available at `/api/cron/football-data-sync` and
+requires `Authorization: Bearer ${CRON_SECRET}`. Vercel Hobby projects do not
+support one-minute Cron Jobs, so use an external scheduler for minute-level
+syncing unless the project is upgraded.
+
 The Vercel CLI is optional. If you want to use it without installing it globally:
 
 ```bash
