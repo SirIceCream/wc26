@@ -60,9 +60,11 @@ function PotentialWinList({ items }: { items: UserPotentialWin[] }) {
             {item.entryLabel} · {item.scoreline}
           </span>
           <span className="font-black text-zinc-950">
-            {item.possibleWinEuros === null
-              ? "Nach Anpfiff"
-              : formatEuro(item.possibleWinEuros)}
+            {item.isImpossible
+              ? "Nicht mehr möglich"
+              : item.possibleWinEuros === null
+                ? "Nach Anpfiff"
+                : formatEuro(item.possibleWinEuros)}
           </span>
         </div>
       ))}
@@ -138,21 +140,34 @@ function DistributionPanel({ groups }: { groups: MatchPredictionGroup[] }) {
           <div
             className={cn(
               "rounded-lg border p-3",
-              group.isFinalScore
+              group.isImpossible
+                ? "border-zinc-200 bg-zinc-50 opacity-70"
+                : group.isFinalScore || group.isCurrentScore
                 ? "border-emerald-300 bg-emerald-50"
                 : "border-zinc-200 bg-white",
             )}
             key={group.scoreline}
           >
             <div className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-3">
-              <div className="text-2xl font-black text-zinc-950">
+              <div
+                className={cn(
+                  "text-2xl font-black",
+                  group.isImpossible
+                    ? "text-zinc-400 line-through"
+                    : "text-zinc-950",
+                )}
+              >
                 {group.scoreline}
               </div>
               <div className="h-3 overflow-hidden rounded-full bg-zinc-100">
                 <div
                   className={cn(
                     "h-full rounded-full",
-                    group.isFinalScore ? "bg-emerald-700" : "bg-yellow-400",
+                    group.isImpossible
+                      ? "bg-zinc-300"
+                      : group.isFinalScore || group.isCurrentScore
+                      ? "bg-emerald-700"
+                      : "bg-yellow-400",
                   )}
                   style={{ width: `${(group.count / maxCount) * 100}%` }}
                 />
@@ -167,12 +182,26 @@ function DistributionPanel({ groups }: { groups: MatchPredictionGroup[] }) {
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold">
-              <span className="rounded-md bg-yellow-100 px-2 py-1 text-yellow-950">
-                Möglicher Gewinn {formatEuro(group.possibleWinEuros)}
+              <span
+                className={cn(
+                  "rounded-md px-2 py-1",
+                  group.isImpossible
+                    ? "bg-zinc-100 text-zinc-500"
+                    : "bg-yellow-100 text-yellow-950",
+                )}
+              >
+                {group.isImpossible
+                  ? "Nicht mehr möglich"
+                  : `Möglicher Gewinn ${formatEuro(group.possibleWinEuros)}`}
               </span>
               {group.isFinalScore ? (
                 <span className="rounded-md bg-emerald-100 px-2 py-1 text-emerald-900">
                   Endstand
+                </span>
+              ) : null}
+              {group.isCurrentScore ? (
+                <span className="rounded-md bg-emerald-100 px-2 py-1 text-emerald-900">
+                  Aktueller Stand
                 </span>
               ) : null}
             </div>
@@ -191,13 +220,27 @@ function SubmissionsList({ groups }: { groups: MatchPredictionGroup[] }) {
       </h2>
       <div className="mt-4 space-y-4">
         {groups.map((group) => (
-          <div key={group.scoreline}>
+          <div className={cn(group.isImpossible && "opacity-70")} key={group.scoreline}>
             <div className="mb-2 flex items-center justify-between gap-3">
-              <div className="text-lg font-black text-zinc-950">
+              <div
+                className={cn(
+                  "text-lg font-black",
+                  group.isImpossible
+                    ? "text-zinc-400 line-through"
+                    : "text-zinc-950",
+                )}
+              >
                 {group.scoreline}
               </div>
-              <div className="text-xs font-bold uppercase text-zinc-500">
-                Möglicher Gewinn {formatEuro(group.possibleWinEuros)}
+              <div
+                className={cn(
+                  "text-xs font-bold uppercase",
+                  group.isImpossible ? "text-zinc-400" : "text-zinc-500",
+                )}
+              >
+                {group.isImpossible
+                  ? "Nicht mehr möglich"
+                  : `Möglicher Gewinn ${formatEuro(group.possibleWinEuros)}`}
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -205,7 +248,9 @@ function SubmissionsList({ groups }: { groups: MatchPredictionGroup[] }) {
                 <span
                   className={cn(
                     "rounded-md px-2 py-1 text-xs font-bold",
-                    submission.isCurrentUser
+                    group.isImpossible
+                      ? "bg-zinc-100 text-zinc-400"
+                      : submission.isCurrentUser
                       ? "bg-emerald-800 text-white"
                       : "bg-zinc-100 text-zinc-700",
                   )}

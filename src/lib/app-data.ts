@@ -111,13 +111,16 @@ export type MatchPredictionGroup = {
   awayScore: number;
   count: number;
   possibleWinEuros: number;
+  isCurrentScore: boolean;
   isFinalScore: boolean;
+  isImpossible: boolean;
   submissions: MatchPredictionSubmission[];
 };
 
 export type UserPotentialWin = {
   entryLabel: string;
   scoreline: string;
+  isImpossible?: boolean;
   possibleWinEuros: number | null;
 };
 
@@ -722,10 +725,11 @@ function buildPredictionGroups({
   submissions: MatchPredictionSubmission[];
 }): MatchPredictionGroup[] {
   const groups = new Map<string, MatchPredictionSubmission[]>();
-  const finalScoreline =
+  const currentScoreline =
     match.homeScore !== null && match.awayScore !== null
       ? `${match.homeScore}:${match.awayScore}`
       : null;
+  const finalScoreline = match.status === "done" ? currentScoreline : null;
 
   for (const submission of submissions) {
     const scoreline = `${submission.homeScore}:${submission.awayScore}`;
@@ -748,12 +752,24 @@ function buildPredictionGroups({
         possibleWinEuros: floorToCents(
           pot.totalEuros / groupedSubmissions.length,
         ),
+        isCurrentScore:
+          match.status === "live" && currentScoreline === scoreline,
         isFinalScore: finalScoreline === scoreline,
+        isImpossible:
+          match.homeScore !== null &&
+          match.awayScore !== null &&
+          (match.status === "done"
+            ? finalScoreline !== scoreline
+            : homeScore < match.homeScore || awayScore < match.awayScore),
         submissions: groupedSubmissions,
       };
     })
     .sort((a, b) => {
-      if (a.isFinalScore !== b.isFinalScore) return a.isFinalScore ? -1 : 1;
+      const aHighlighted = a.isFinalScore || a.isCurrentScore;
+      const bHighlighted = b.isFinalScore || b.isCurrentScore;
+
+      if (aHighlighted !== bHighlighted) return aHighlighted ? -1 : 1;
+      if (a.isImpossible !== b.isImpossible) return a.isImpossible ? 1 : -1;
 
       return (
         b.count - a.count ||
@@ -1128,6 +1144,7 @@ export async function getMatchIntegrityData(
       if (!prediction) {
         return {
           entryLabel: entry.label,
+          isImpossible: false,
           scoreline: "Kein Tipp",
           possibleWinEuros: null,
         };
@@ -1137,6 +1154,7 @@ export async function getMatchIntegrityData(
 
       return {
         entryLabel: entry.label,
+        isImpossible: groupByScoreline.get(scoreline)?.isImpossible ?? false,
         scoreline,
         possibleWinEuros:
           groupByScoreline.get(scoreline)?.possibleWinEuros ?? null,

@@ -2,18 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq } from "drizzle-orm";
-import {
-  leagueMembers,
-  matches,
-  predictions,
-  profiles,
-  specialPredictions,
-} from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { matches, profiles } from "@/db/schema";
 import {
   assertUniqueDisplayName,
   canManageBeforeStart,
-  getDefaultLeague,
   logAdminAction,
   requireAdminContext,
 } from "@/lib/admin";
@@ -146,89 +139,6 @@ export async function updateUserDisplayName(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/leaderboard");
-  revalidatePath("/profile");
-  adminRedirect("saved");
-}
-
-export async function updateUserPredictionRows(formData: FormData) {
-  const context = await requireAdminContext();
-  requirePreStartAdminWindow();
-
-  const userId = getUserId(formData);
-  const usesTwoPredictionRows = formData.get("usesTwoPredictionRows") === "true";
-  const league = await getDefaultLeague();
-
-  if (!userId || !league) {
-    adminRedirect("invalid-input");
-  }
-
-  const [before] = await context.db
-    .select()
-    .from(leagueMembers)
-    .where(
-      and(
-        eq(leagueMembers.leagueId, league.id),
-        eq(leagueMembers.userId, userId),
-      ),
-    )
-    .limit(1);
-
-  if (!before) {
-    adminRedirect("user-missing");
-  }
-
-  let deletedRowTwoPredictions = 0;
-  let deletedRowTwoSpecialPredictions = 0;
-
-  if (!usesTwoPredictionRows) {
-    const deletedPredictions = await context.db
-      .delete(predictions)
-      .where(
-        and(
-          eq(predictions.leagueId, league.id),
-          eq(predictions.userId, userId),
-          eq(predictions.predictionRow, 2),
-        ),
-      )
-      .returning({ id: predictions.id });
-    const deletedSpecialPredictions = await context.db
-      .delete(specialPredictions)
-      .where(
-        and(
-          eq(specialPredictions.leagueId, league.id),
-          eq(specialPredictions.userId, userId),
-          eq(specialPredictions.predictionRow, 2),
-        ),
-      )
-      .returning({ id: specialPredictions.id });
-
-    deletedRowTwoPredictions = deletedPredictions.length;
-    deletedRowTwoSpecialPredictions = deletedSpecialPredictions.length;
-  }
-
-  await context.db
-    .update(leagueMembers)
-    .set({ usesTwoPredictionRows })
-    .where(eq(leagueMembers.id, before.id));
-  await logAdminAction({
-    action: "update_prediction_rows",
-    actorUserId: context.profileId,
-    beforeData: {
-      usesTwoPredictionRows: before.usesTwoPredictionRows,
-    },
-    afterData: {
-      deletedRowTwoPredictions,
-      deletedRowTwoSpecialPredictions,
-      usesTwoPredictionRows,
-    },
-    entityId: userId,
-    entityType: "league_member",
-  });
-
-  revalidatePath("/admin");
-  revalidatePath("/");
-  revalidatePath("/leaderboard");
-  revalidatePath("/predict");
   revalidatePath("/profile");
   adminRedirect("saved");
 }

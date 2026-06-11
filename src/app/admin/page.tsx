@@ -15,7 +15,6 @@ import {
   updateMatchCorrection,
   updateUserAdminRole,
   updateUserDisplayName,
-  updateUserPredictionRows,
 } from "./actions";
 
 const messages: Record<string, string> = {
@@ -313,8 +312,6 @@ function AdminUserCard({
   user: AdminUserRow;
 }) {
   const isCurrentUser = user.id === currentUserId;
-  const rowTwoDataCount =
-    user.rowTwoPredictionCount + user.rowTwoSpecialPredictionCount;
 
   return (
     <Surface className="p-4">
@@ -385,36 +382,6 @@ function AdminUserCard({
           </button>
         </form>
 
-        <form action={updateUserPredictionRows} className="rounded-lg bg-zinc-50 p-3">
-          <input name="userId" type="hidden" value={user.id} />
-          <label className="block">
-            <span className="text-xs font-black uppercase text-zinc-500">
-              Tippreihen
-            </span>
-            <select
-              className="mt-2 h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-950 outline-none focus:border-emerald-800 disabled:bg-zinc-100"
-              defaultValue={user.usesTwoPredictionRows ? "true" : "false"}
-              disabled={!canManageBeforeStart || !user.isMember}
-              name="usesTwoPredictionRows"
-            >
-              <option value="false">1 Tippreihe</option>
-              <option value="true">2 Tippreihen</option>
-            </select>
-          </label>
-          {rowTwoDataCount > 0 ? (
-            <p className="mt-2 text-xs font-semibold text-amber-700">
-              Beim Wechsel auf 1 Tippreihe werden vorhandene Tipps der zweiten
-              Reihe gelöscht.
-            </p>
-          ) : null}
-          <button
-            className="mt-3 h-10 rounded-lg bg-zinc-950 px-4 text-sm font-black text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
-            disabled={!canManageBeforeStart || !user.isMember}
-          >
-            Tippreihen speichern
-          </button>
-        </form>
-
         <form action={updateUserAdminRole} className="rounded-lg bg-zinc-50 p-3">
           <input name="userId" type="hidden" value={user.id} />
           <label className="block">
@@ -473,6 +440,39 @@ function AdminUserCard({
   );
 }
 
+function AdminUserSection({
+  canManageBeforeStart,
+  currentUserId,
+  users,
+}: {
+  canManageBeforeStart: boolean;
+  currentUserId: string;
+  users: AdminUserRow[];
+}) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-bold uppercase text-zinc-500">
+        Benutzer
+      </h2>
+      <details>
+        <summary className="cursor-pointer text-sm font-black text-emerald-800">
+          Benutzerverwaltung öffnen
+        </summary>
+        <div className="mt-3 space-y-3">
+          {users.map((user) => (
+            <AdminUserCard
+              canManageBeforeStart={canManageBeforeStart}
+              currentUserId={currentUserId}
+              key={user.id}
+              user={user}
+            />
+          ))}
+        </div>
+      </details>
+    </section>
+  );
+}
+
 export default async function AdminPage({
   searchParams,
 }: {
@@ -501,8 +501,8 @@ export default async function AdminPage({
             Notfallverwaltung
           </h1>
           <p className="mt-2 max-w-2xl text-sm font-semibold text-zinc-500">
-            Verwalte Benutzer, Tippreihen und Adminrechte. Match- und
-            Spezialtipps werden hier nicht manuell editiert.
+            Verwalte Benutzer und Adminrechte. Match- und Spezialtipps werden
+            hier nicht manuell editiert.
           </p>
         </div>
         {!data.canManageBeforeStart ? (
@@ -533,19 +533,11 @@ export default async function AdminPage({
         syncLog={data.providerSyncLog}
       />
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-bold uppercase text-zinc-500">
-          Benutzer
-        </h2>
-        {data.users.map((user) => (
-          <AdminUserCard
-            canManageBeforeStart={data.canManageBeforeStart}
-            currentUserId={data.currentUserId}
-            key={user.id}
-            user={user}
-          />
-        ))}
-      </section>
+      <AdminUserSection
+        canManageBeforeStart={data.canManageBeforeStart}
+        currentUserId={data.currentUserId}
+        users={data.users}
+      />
     </div>
   );
 }
