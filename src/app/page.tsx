@@ -3,24 +3,155 @@ import { DataModeBanner } from "@/components/app/data-mode-banner";
 import { LeaderboardMiniRow } from "@/components/app/leaderboard";
 import { LockCountdown } from "@/components/app/lock-countdown";
 import { MatchList } from "@/components/app/match-card";
-import { SectionTitle, Surface } from "@/components/app/primitives";
+import { SectionTitle, Surface, TeamFlag } from "@/components/app/primitives";
 import { SpecialPickCard } from "@/components/app/special-pick-card";
 import { TournamentProgressCard } from "@/components/app/tournament-progress";
 import { getAppData } from "@/lib/app-data";
 import { formatViennaMatchTime } from "@/lib/time";
+import {
+  getStageLabel,
+  getTeamLabel,
+  getTeamShortLabel,
+  type Match,
+} from "@/lib/tournament-data";
+import { cn } from "@/lib/utils";
+
+function formatEuro(value: number) {
+  return `${value.toLocaleString("de-AT", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  })} EUR`;
+}
+
+function FeaturedMatchCard({
+  connected,
+  match,
+}: {
+  connected: boolean;
+  match: Match;
+}) {
+  const isLive = match.status === "live";
+  const isJackpotMatch = Boolean(match.pot?.isJackpot);
+  const matchTime = match.kickoffAt
+    ? formatViennaMatchTime(match.kickoffAt).compact
+    : match.time;
+  const content = (
+    <Surface
+      className={cn(
+        "relative p-5 transition",
+        connected && "hover:-translate-y-0.5 hover:shadow-md",
+        isJackpotMatch
+          ? "border-yellow-300 bg-gradient-to-br from-yellow-50 via-white to-amber-50 shadow-[0_16px_40px_rgba(202,138,4,0.14)]"
+          : isLive
+            ? "border-red-200 bg-gradient-to-br from-red-50 via-white to-white"
+            : "bg-white",
+      )}
+    >
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span
+          className={cn(
+            "rounded-md px-2 py-1 text-xs font-black uppercase",
+            isLive
+              ? "bg-red-700 text-white"
+              : "bg-emerald-100 text-emerald-900",
+          )}
+        >
+          {isLive ? "Live-Spiel" : "Nächstes Spiel"}
+        </span>
+        {match.minute ? (
+          <span className="rounded-md bg-red-100 px-2 py-1 text-xs font-black uppercase text-red-700">
+            {match.minute}
+          </span>
+        ) : null}
+        {isJackpotMatch && match.pot ? (
+          <span className="rounded-md bg-yellow-300 px-2 py-1 text-xs font-black uppercase text-yellow-950">
+            Jackpot {formatEuro(match.pot.totalEuros)}
+          </span>
+        ) : match.pot ? (
+          <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-black uppercase text-zinc-600">
+            Pot {formatEuro(match.pot.totalEuros)}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+        <div className="flex items-center gap-3">
+          <TeamFlag code={match.home} size="lg" />
+          <div className="min-w-0">
+            <div className="text-xl font-black text-zinc-950">
+              {getTeamShortLabel(match.home)}
+            </div>
+            <div className="truncate text-sm font-semibold text-zinc-500">
+              {getTeamLabel(match.home)}
+            </div>
+          </div>
+        </div>
+
+        <div className="text-center">
+          <div
+            className={cn(
+              "text-5xl font-black tabular-nums",
+              isLive ? "text-red-700" : "text-zinc-950",
+            )}
+          >
+            {match.score ? `${match.score.home}:${match.score.away}` : "vs"}
+          </div>
+          <div className="mt-2 text-xs font-black uppercase text-zinc-500">
+            {getStageLabel(match.stage)} · {matchTime}
+          </div>
+          {match.status === "open" ? (
+            <div className="mt-3 rounded-lg bg-white/70 px-3 py-2">
+              <LockCountdown targetAt={match.kickoffAt} />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex items-center gap-3 lg:justify-end">
+          <div className="min-w-0 text-right">
+            <div className="text-xl font-black text-zinc-950">
+              {getTeamShortLabel(match.away)}
+            </div>
+            <div className="truncate text-sm font-semibold text-zinc-500">
+              {getTeamLabel(match.away)}
+            </div>
+          </div>
+          <TeamFlag code={match.away} size="lg" />
+        </div>
+      </div>
+
+      {match.venue ? (
+        <div className="mt-4 border-t border-zinc-100 pt-3 text-sm font-semibold text-zinc-500">
+          {match.venue}
+        </div>
+      ) : null}
+    </Surface>
+  );
+
+  if (!connected) {
+    return content;
+  }
+
+  return (
+    <Link className="block" href={`/match/${match.id}`}>
+      {content}
+    </Link>
+  );
+}
 
 export default async function Home() {
   const data = await getAppData();
-  const openPicks = data.predictionMatches;
-  const nextLockMatch = openPicks[0] ?? data.upcomingMatches[0];
-  const nextLockTime = nextLockMatch?.kickoffAt
-    ? formatViennaMatchTime(nextLockMatch.kickoffAt).compact
-    : nextLockMatch?.time;
+  const dashboardMatches = [...data.todayMatches, ...data.upcomingMatches];
+  const featuredMatch =
+    dashboardMatches.find((match) => match.status === "live") ??
+    dashboardMatches[0];
+  const nextListMatches = data.todayMatches.filter(
+    (match) => match.id !== featuredMatch?.id,
+  );
+  const secondaryMatches = nextListMatches.length
+    ? nextListMatches
+    : data.upcomingMatches.slice(0, 2);
   const userDisplayName = data.userDisplayName ?? "Player";
   const firstName = userDisplayName.split(" ")[0] ?? userDisplayName;
-  const openPickLabel = openPicks.length
-    ? `${openPicks.length} Spiele sind aktuell tippbar.`
-    : "Aktuell sind keine Tipps offen.";
   const missedPickLabel =
     data.missedPredictionCount === 1
       ? "1 verpasster Tipp"
@@ -33,32 +164,24 @@ export default async function Home() {
       <div className="flex flex-col gap-6">
         <DataModeBanner connected={data.connected} />
 
-        <section className="overflow-hidden rounded-lg bg-emerald-900 text-white shadow-sm">
-          <div className="grid gap-6 p-5 lg:grid-cols-[1fr_22rem] lg:items-start sm:p-6">
-            <div>
-              <h1 className="text-3xl font-black sm:text-4xl">
-                Servus {firstName}
-              </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-emerald-50">
-                Gib deine Tipps ab, bevor die jeweiligen Spiele angepfiffen
-                werden.
-              </p>
-            </div>
-            {nextLockMatch ? (
-              <div className="w-full rounded-lg bg-yellow-200 px-5 py-4 text-yellow-950 lg:px-6">
-                <div className="text-xs font-bold uppercase">
-                  Nächstes Spiel
-                </div>
-                <div className="mt-1 text-xl font-black">{nextLockTime}</div>
-                <div className="text-sm font-semibold">
-                  {nextLockMatch.home} gegen {nextLockMatch.away}
-                </div>
-                <div className="mt-3 rounded-md bg-yellow-100 px-3 py-2">
-                  <LockCountdown targetAt={nextLockMatch.kickoffAt} />
-                </div>
-              </div>
-            ) : null}
+        <section>
+          <div className="mb-3">
+            <p className="text-xs font-bold uppercase text-emerald-800">
+              Servus {firstName}
+            </p>
+            <h1 className="mt-1 text-3xl font-black text-zinc-950">
+              Turnierübersicht
+            </h1>
           </div>
+          {featuredMatch ? (
+            <FeaturedMatchCard connected={data.connected} match={featuredMatch} />
+          ) : (
+            <Surface className="p-5">
+              <p className="text-sm font-semibold text-zinc-500">
+                Aktuell ist kein Spiel angesetzt.
+              </p>
+            </Surface>
+          )}
         </section>
 
         <TournamentProgressCard progress={data.tournamentProgress} />
@@ -77,24 +200,6 @@ export default async function Home() {
             />
           </div>
         ) : null}
-
-        <Link
-          className="grid gap-4 rounded-lg bg-zinc-950 p-4 text-white shadow-sm sm:grid-cols-[auto_1fr_auto] sm:items-center"
-          href="/predict"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-200 text-2xl font-black text-yellow-950">
-            {openPicks.length}
-          </div>
-          <div>
-            <div className="font-black">Offene Tipps</div>
-            <div className="mt-1 text-sm text-zinc-300">
-              {openPickLabel}
-            </div>
-          </div>
-          <span className="rounded-lg bg-yellow-200 px-4 py-2 text-center text-sm font-black text-yellow-950">
-            Tippen
-          </span>
-        </Link>
 
         {data.missedPredictionCount > 0 ? (
           <Link
@@ -117,7 +222,7 @@ export default async function Home() {
           />
           <MatchList
             linkToDetails={data.connected}
-            matches={data.todayMatches}
+            matches={secondaryMatches}
             showPrediction
           />
         </section>
