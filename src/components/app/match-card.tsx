@@ -198,11 +198,13 @@ function EntryPredictionRow({
   entry,
   leagueId,
   match,
+  onPredictionSaved,
 }: {
   canEdit: boolean;
   entry: PredictionEntry;
   leagueId?: string | null;
   match: Match;
+  onPredictionSaved?: (predictionRow: number) => void;
 }) {
   const prediction = getEntryPrediction(match, entry);
 
@@ -237,6 +239,7 @@ function EntryPredictionRow({
         key={`${match.id}-${entry.predictionRow}-${prediction?.home ?? "new"}-${prediction?.away ?? "new"}`}
         leagueId={leagueId}
         matchId={match.id}
+        onSaved={() => onPredictionSaved?.(entry.predictionRow)}
         prediction={prediction}
       />
     </div>
@@ -247,11 +250,13 @@ export function PredictionCard({
   editable,
   leagueId,
   match,
+  onPredictionSaved,
   predictionEntries,
 }: {
   editable?: boolean;
   leagueId?: string | null;
   match: Match;
+  onPredictionSaved?: (matchId: string, predictionRow: number) => void;
   predictionEntries?: PredictionEntry[];
 }) {
   const canEdit = Boolean(
@@ -324,6 +329,9 @@ export function PredictionCard({
               key={`${match.id}-${primaryEntry.predictionRow}-${primaryPrediction?.home ?? "new"}-${primaryPrediction?.away ?? "new"}`}
               leagueId={leagueId}
               matchId={match.id}
+              onSaved={() =>
+                onPredictionSaved?.(match.id, primaryEntry.predictionRow)
+              }
               prediction={primaryPrediction}
             />
           ) : (
@@ -351,6 +359,9 @@ export function PredictionCard({
               key={entry.id}
               leagueId={leagueId}
               match={match}
+              onPredictionSaved={(predictionRow) =>
+                onPredictionSaved?.(match.id, predictionRow)
+              }
             />
           ))}
           <LockCountdown fallback={match.deadline ?? match.kickoff} targetAt={match.kickoffAt} />

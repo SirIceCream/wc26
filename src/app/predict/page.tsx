@@ -1,6 +1,5 @@
 import { DataModeBanner } from "@/components/app/data-mode-banner";
-import { PredictionCard } from "@/components/app/match-card";
-import { SectionTitle, Surface } from "@/components/app/primitives";
+import { PredictMatchListClient } from "@/components/app/predict-match-list-client";
 import { getAppData } from "@/lib/app-data";
 import { formatViennaMatchTime } from "@/lib/time";
 
@@ -45,28 +44,12 @@ export default async function PredictPage() {
         </div>
       </div>
 
-      <section className="space-y-3">
-        <SectionTitle title="Offene Tipps" />
-        {openMatches.length ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {openMatches.map((match) => (
-              <PredictionCard
-                editable={canEdit}
-                key={match.id}
-                leagueId={data.leagueId}
-                match={match}
-                predictionEntries={data.predictionEntries}
-              />
-            ))}
-          </div>
-        ) : (
-          <Surface className="p-4">
-            <p className="text-sm font-semibold text-zinc-500">
-              Aktuell sind keine Spiele zum Tippen freigeschaltet.
-            </p>
-          </Surface>
-        )}
-      </section>
+      <PredictMatchListClient
+        canEdit={canEdit}
+        leagueId={data.leagueId}
+        matches={openMatches}
+        predictionEntries={data.predictionEntries}
+      />
     </div>
   );
 }

@@ -71,12 +71,14 @@ export function PredictionFormClient({
   entry,
   leagueId,
   matchId,
+  onSaved,
   prediction,
 }: {
   canEdit: boolean;
   entry: PredictionEntry;
   leagueId?: string | null;
   matchId: string;
+  onSaved?: (prediction: PredictionValue) => void;
   prediction?: PredictionValue | null;
 }) {
   const [savedPrediction, setSavedPrediction] = useState(prediction ?? null);
@@ -118,7 +120,9 @@ export function PredictionFormClient({
 
     try {
       await savePrediction(formData);
-      setSavedPrediction({ away: awayScore, home: homeScore });
+      const nextPrediction = { away: awayScore, home: homeScore };
+      setSavedPrediction(nextPrediction);
+      onSaved?.(nextPrediction);
     } catch {
       setHasError(true);
     } finally {
