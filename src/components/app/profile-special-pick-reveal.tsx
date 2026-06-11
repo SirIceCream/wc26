@@ -104,10 +104,7 @@ function buildGoalsGroups(entries: SpecialPickRevealEntry[]) {
     if (a.totalGoals === null && b.totalGoals !== null) return 1;
     if (a.totalGoals !== null && b.totalGoals === null) return -1;
 
-    return (
-      b.entries.length - a.entries.length ||
-      (a.totalGoals ?? 0) - (b.totalGoals ?? 0)
-    );
+    return (a.totalGoals ?? 0) - (b.totalGoals ?? 0);
   });
 }
 

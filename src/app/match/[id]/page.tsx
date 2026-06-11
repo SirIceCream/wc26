@@ -127,10 +127,10 @@ function DistributionPanel({ groups }: { groups: MatchPredictionGroup[] }) {
       <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-sm font-bold uppercase text-zinc-500">
-            Tippverteilung
+            Abgegebene Tipps / Tippverteilung
           </h2>
           <p className="mt-1 text-sm font-semibold text-zinc-500">
-            Gruppiert nach Ergebnis.
+            Gruppiert nach Ergebnis und Tippreihen.
           </p>
         </div>
       </div>
@@ -205,45 +205,7 @@ function DistributionPanel({ groups }: { groups: MatchPredictionGroup[] }) {
                 </span>
               ) : null}
             </div>
-          </div>
-        ))}
-      </div>
-    </Surface>
-  );
-}
-
-function SubmissionsList({ groups }: { groups: MatchPredictionGroup[] }) {
-  return (
-    <Surface className="p-4">
-      <h2 className="text-sm font-bold uppercase text-zinc-500">
-        Alle abgegebenen Tipps
-      </h2>
-      <div className="mt-4 space-y-4">
-        {groups.map((group) => (
-          <div className={cn(group.isImpossible && "opacity-70")} key={group.scoreline}>
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <div
-                className={cn(
-                  "text-lg font-black",
-                  group.isImpossible
-                    ? "text-zinc-400 line-through"
-                    : "text-zinc-950",
-                )}
-              >
-                {group.scoreline}
-              </div>
-              <div
-                className={cn(
-                  "text-xs font-bold uppercase",
-                  group.isImpossible ? "text-zinc-400" : "text-zinc-500",
-                )}
-              >
-                {group.isImpossible
-                  ? "Nicht mehr möglich"
-                  : `Möglicher Gewinn ${formatEuro(group.possibleWinEuros)}`}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2 border-t border-zinc-100 pt-3">
               {group.submissions.map((submission) => (
                 <span
                   className={cn(
@@ -386,7 +348,6 @@ export default async function MatchIntegrityPage({
       ) : data.groups.length ? (
         <div className="mt-7 space-y-5">
           <DistributionPanel groups={data.groups} />
-          <SubmissionsList groups={data.groups} />
         </div>
       ) : (
         <Surface className="mt-7 p-4">
