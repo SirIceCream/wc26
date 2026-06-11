@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { NextResponse } from "next/server";
 
-const RULES_FILE = "Regelwerk Online Jackpotspiel Fussball WM 2026 V4.pdf";
+const RULES_FILE = "Regelwerk Online Jackpotspiel Fussball WM 2026 V5.pdf";
 
 export async function GET() {
   const file = await readFile(join(process.cwd(), "rules", RULES_FILE));
