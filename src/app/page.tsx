@@ -23,6 +23,28 @@ function formatEuro(value: number) {
   })} EUR`;
 }
 
+function getOwnPredictionLabels(match: Match) {
+  const entries = Object.entries(match.predictionsByRow ?? {})
+    .map(([row, prediction]) => ({
+      label: `R${row}`,
+      prediction,
+      row: Number.parseInt(row, 10),
+    }))
+    .sort((a, b) => a.row - b.row);
+
+  if (!entries.length && match.prediction) {
+    return [
+      {
+        label: "R1",
+        prediction: match.prediction,
+        row: 1,
+      },
+    ];
+  }
+
+  return entries;
+}
+
 function FeaturedMatchCard({
   connected,
   match,
@@ -35,6 +57,7 @@ function FeaturedMatchCard({
   const matchTime = match.kickoffAt
     ? formatViennaMatchTime(match.kickoffAt).compact
     : match.time;
+  const ownPredictions = getOwnPredictionLabels(match);
   const content = (
     <Surface
       className={cn(
@@ -124,6 +147,28 @@ function FeaturedMatchCard({
           {match.venue}
         </div>
       ) : null}
+
+      <div className="mt-4 flex flex-col gap-2 border-t border-zinc-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-xs font-black uppercase text-zinc-500">
+          Mein Tipp
+        </div>
+        {ownPredictions.length ? (
+          <div className="flex flex-wrap gap-2">
+            {ownPredictions.map((entry) => (
+              <span
+                className="rounded-md bg-emerald-100 px-2 py-1 text-xs font-black text-emerald-900"
+                key={entry.row}
+              >
+                {entry.label} · {entry.prediction.home}:{entry.prediction.away}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-black text-zinc-500">
+            Kein Tipp
+          </span>
+        )}
+      </div>
     </Surface>
   );
 
@@ -166,11 +211,8 @@ export default async function Home() {
 
         <section>
           <div className="mb-3">
-            <p className="text-xs font-bold uppercase text-emerald-800">
+            <h1 className="text-3xl font-black text-zinc-950">
               Servus {firstName}
-            </p>
-            <h1 className="mt-1 text-3xl font-black text-zinc-950">
-              Turnierübersicht
             </h1>
           </div>
           {featuredMatch ? (
