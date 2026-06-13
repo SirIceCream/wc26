@@ -26,6 +26,12 @@ function getMatchTime(match: Match) {
   };
 }
 
+function hasSubmittedPrediction(match: Match) {
+  return Boolean(
+    match.prediction || Object.keys(match.predictionsByRow ?? {}).length > 0,
+  );
+}
+
 export function MatchRow({
   match,
   showPrediction,
@@ -78,6 +84,10 @@ export function MatchRow({
 
         {match.status === "live" && match.minute ? (
           <StatusChip kind="live">{match.minute}</StatusChip>
+        ) : null}
+
+        {showPrediction && !match.score && hasSubmittedPrediction(match) ? (
+          <StatusChip kind="hit">Tipp abgegeben</StatusChip>
         ) : null}
 
         {showPrediction && match.prediction ? (
