@@ -30,6 +30,49 @@ function scoreLabel(submission: MatchPredictionSubmission) {
   return `${submission.homeScore}:${submission.awayScore}`;
 }
 
+function getTipGroup(
+  submission: MatchPredictionSubmission,
+  groups: MatchPredictionGroup[],
+) {
+  const submissionScoreline = scoreLabel(submission);
+
+  return groups.find((group) => group.scoreline === submissionScoreline);
+}
+
+function tipCardClasses(group?: MatchPredictionGroup) {
+  if (group?.isImpossible) {
+    return "border-red-200 bg-red-50";
+  }
+
+  if (group?.isFinalScore || group?.isCurrentScore) {
+    return "border-emerald-200 bg-emerald-50";
+  }
+
+  return "border-yellow-200 bg-yellow-50";
+}
+
+function tipLabelClasses(group?: MatchPredictionGroup) {
+  if (group?.isImpossible) return "text-red-900";
+  if (group?.isFinalScore || group?.isCurrentScore) return "text-emerald-900";
+
+  return "text-yellow-950";
+}
+
+function tipStatusLabel(group?: MatchPredictionGroup) {
+  if (group?.isImpossible) return "Nicht mehr möglich";
+  if (group?.isFinalScore) return "Endstand";
+  if (group?.isCurrentScore) return "Aktueller Stand";
+
+  return "Noch möglich";
+}
+
+function currentUserChipClasses(group: MatchPredictionGroup) {
+  if (group.isImpossible) return "bg-red-100 text-red-800";
+  if (group.isFinalScore || group.isCurrentScore) return "bg-emerald-800 text-white";
+
+  return "bg-yellow-100 text-yellow-950";
+}
+
 function PotentialWinList({ items }: { items: UserPotentialWin[] }) {
   return (
     <div className="space-y-2">
@@ -56,9 +99,11 @@ function PotentialWinList({ items }: { items: UserPotentialWin[] }) {
 
 function OwnTips({
   canPredict,
+  groups,
   submissions,
 }: {
   canPredict: boolean;
+  groups: MatchPredictionGroup[];
   submissions: MatchPredictionSubmission[];
 }) {
   if (!submissions.length) {
@@ -81,22 +126,43 @@ function OwnTips({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      {submissions.map((submission) => (
-        <div
-          className="rounded-lg border border-emerald-200 bg-emerald-50 p-4"
-          key={submission.id}
-        >
-          <div className="text-xs font-black uppercase text-emerald-900">
-            {submission.entryLabel}
+      {submissions.map((submission) => {
+        const group = getTipGroup(submission, groups);
+
+        return (
+          <div
+            className={cn("rounded-lg border p-4", tipCardClasses(group))}
+            key={submission.id}
+          >
+            <div
+              className={cn(
+                "text-xs font-black uppercase",
+                tipLabelClasses(group),
+              )}
+            >
+              {submission.entryLabel}
+            </div>
+            <div className="mt-2 text-3xl font-black text-zinc-950">
+              {scoreLabel(submission)}
+            </div>
+            <div className="mt-1 text-xs font-semibold text-zinc-500">
+              {submission.entryName}
+            </div>
+            <div
+              className={cn(
+                "mt-3 inline-flex rounded-md px-2 py-1 text-xs font-black uppercase",
+                group?.isImpossible
+                  ? "bg-red-100 text-red-800"
+                  : group?.isFinalScore || group?.isCurrentScore
+                    ? "bg-emerald-100 text-emerald-900"
+                    : "bg-yellow-100 text-yellow-950",
+              )}
+            >
+              {tipStatusLabel(group)}
+            </div>
           </div>
-          <div className="mt-2 text-3xl font-black text-zinc-950">
-            {scoreLabel(submission)}
-          </div>
-          <div className="mt-1 text-xs font-semibold text-zinc-500">
-            {submission.entryName}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -192,10 +258,10 @@ function DistributionPanel({ groups }: { groups: MatchPredictionGroup[] }) {
                 <span
                   className={cn(
                     "rounded-md px-2 py-1 text-xs font-bold",
-                    group.isImpossible
-                      ? "bg-zinc-100 text-zinc-400"
-                      : submission.isCurrentUser
-                      ? "bg-emerald-800 text-white"
+                    submission.isCurrentUser
+                      ? currentUserChipClasses(group)
+                      : group.isImpossible
+                        ? "bg-zinc-100 text-zinc-400"
                       : "bg-zinc-100 text-zinc-700",
                   )}
                   key={submission.id}
@@ -315,7 +381,11 @@ export default async function MatchIntegrityPage({
         <h2 className="text-sm font-bold uppercase text-zinc-500">
           Dein Tipp
         </h2>
-        <OwnTips canPredict={canPredict} submissions={ownSubmissions} />
+        <OwnTips
+          canPredict={canPredict}
+          groups={data.groups}
+          submissions={ownSubmissions}
+        />
       </section>
 
       {!data.revealAllPredictions ? (

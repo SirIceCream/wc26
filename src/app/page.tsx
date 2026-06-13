@@ -64,7 +64,7 @@ function FeaturedMatchCard({
         "relative p-5 transition",
         connected && "hover:-translate-y-0.5 hover:shadow-md",
         isJackpotMatch
-          ? "border-yellow-300 bg-gradient-to-br from-yellow-50 via-white to-amber-50 shadow-[0_16px_40px_rgba(202,138,4,0.14)]"
+          ? "border-4 border-amber-400 bg-gradient-to-br from-yellow-100 via-amber-50 to-yellow-200 shadow-[0_18px_44px_rgba(202,138,4,0.22)]"
           : isLive
             ? "border-red-200 bg-gradient-to-br from-red-50 via-white to-white"
             : "bg-white",
@@ -87,7 +87,7 @@ function FeaturedMatchCard({
           </span>
         ) : null}
         {isJackpotMatch && match.pot ? (
-          <span className="rounded-md bg-yellow-300 px-2 py-1 text-xs font-black uppercase text-yellow-950">
+          <span className="rounded-md border-2 border-yellow-500 bg-amber-400 px-2 py-1 text-xs font-black uppercase text-yellow-950 shadow-sm">
             Jackpot {formatEuro(match.pot.totalEuros)}
           </span>
         ) : match.pot ? (
@@ -270,7 +270,17 @@ export default async function Home() {
         </section>
 
         <section className="space-y-3">
-          <SectionTitle title="Letzte Ergebnisse" />
+          <SectionTitle
+            action={
+              <Link
+                className="text-sm font-bold text-emerald-800"
+                href="/fixtures?results=1"
+              >
+                Alle anzeigen
+              </Link>
+            }
+            title="Letzte Ergebnisse"
+          />
           <MatchList
             emptyMessage="Noch keine Ergebnisse. Das Turnier hat noch nicht begonnen."
             linkToDetails={data.connected}
