@@ -48,7 +48,11 @@ export function FixturesFilterClient({
 
             <section className="space-y-3">
               <SectionTitle title="Weitere Spiele" />
-              <MatchList linkToDetails={connected} matches={otherMatches} />
+              <MatchList
+                linkToDetails={connected}
+                matches={otherMatches}
+                showPrediction
+              />
             </section>
           </>
         ) : null}
