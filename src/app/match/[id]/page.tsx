@@ -30,24 +30,6 @@ function scoreLabel(submission: MatchPredictionSubmission) {
   return `${submission.homeScore}:${submission.awayScore}`;
 }
 
-function statusKind(status: string) {
-  if (status === "live") return "live";
-  if (status === "done") return "done";
-  if (status === "locked") return "locked";
-  if (status === "open") return "open";
-
-  return "upcoming";
-}
-
-function statusLabel(status: string) {
-  if (status === "live") return "Live";
-  if (status === "done") return "Ende";
-  if (status === "locked") return "Gesperrt";
-  if (status === "open") return "Tipp offen";
-
-  return "Demnächst";
-}
-
 function PotentialWinList({ items }: { items: UserPotentialWin[] }) {
   return (
     <div className="space-y-2">
@@ -262,9 +244,6 @@ export default async function MatchIntegrityPage({
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <StatusChip kind={statusKind(data.match.status)}>
-                {statusLabel(data.match.status)}
-              </StatusChip>
               {data.match.status === "live" && data.match.minute ? (
                 <StatusChip kind="live">{data.match.minute}</StatusChip>
               ) : null}

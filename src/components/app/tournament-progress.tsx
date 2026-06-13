@@ -86,7 +86,7 @@ export function TournamentProgressCard({
         })}
       </div>
 
-      <div className="grid grid-cols-2 border-t border-zinc-100 pt-3">
+      <div className="grid grid-cols-3 gap-3 border-t border-zinc-100 pt-3">
         <div>
           <div className="text-[0.65rem] font-bold uppercase text-zinc-500">
             Gespielt
@@ -99,6 +99,14 @@ export function TournamentProgressCard({
             <span className="text-sm text-zinc-500">
               /{progress.totalMatches}
             </span>
+          </div>
+        </div>
+        <div className="text-center">
+          <div className="text-[0.65rem] font-bold uppercase text-zinc-500">
+            Tore
+          </div>
+          <div className="mt-1 text-lg font-black tabular-nums text-zinc-950">
+            {progress.totalGoals}
           </div>
         </div>
         <div className="text-right">

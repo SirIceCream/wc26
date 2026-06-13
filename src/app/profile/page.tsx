@@ -18,10 +18,13 @@ function formatEuro(value: number) {
   })} EUR`;
 }
 
+function formatGoalCount(value: number) {
+  return `${value} ${value === 1 ? "Tor" : "Tore"}`;
+}
+
 export default async function ProfilePage() {
   const data = await getAppData();
   const currentUserEntries = data.leaderboard.filter((row) => row.isCurrentUser);
-  const pendingPicks = data.predictionMatches;
   const wonEuros = currentUserEntries.reduce((total, row) => total + row.points, 0);
   const userDisplayName = data.userDisplayName ?? "Player";
   const teamOptions = Object.keys(teams)
@@ -55,22 +58,14 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Surface className="p-4">
-          <div className="text-sm font-semibold text-zinc-500">
-            Bisher gewonnen
-          </div>
-          <div className="mt-2 text-4xl font-black text-emerald-800">
-            {formatEuro(wonEuros)}
-          </div>
-        </Surface>
-        <Surface className="p-4">
-          <div className="text-sm font-semibold text-zinc-500">Offen</div>
-          <div className="mt-2 text-4xl font-black text-yellow-700">
-            {pendingPicks.length * data.predictionEntries.length}
-          </div>
-        </Surface>
-      </div>
+      <Surface className="p-4">
+        <div className="text-sm font-semibold text-zinc-500">
+          Bisher gewonnen
+        </div>
+        <div className="mt-2 text-4xl font-black text-emerald-800">
+          {formatEuro(wonEuros)}
+        </div>
+      </Surface>
 
       <section className="mt-7 space-y-3">
         <h2 className="text-sm font-bold uppercase text-zinc-500">
@@ -111,11 +106,14 @@ export default async function ProfilePage() {
             Spezialtipps
           </h2>
           <p className="text-xs font-semibold text-zinc-500">
-            Bis zum ersten Spiel editierbar.
+            {canEditSpecialPicks
+              ? "Bis zum ersten Spiel editierbar."
+              : `Gesperrt · Aktuell ${formatGoalCount(data.tournamentProgress.totalGoals)}.`}
           </p>
         </div>
         <ProfileSpecialPicks
           canEdit={canEditSpecialPicks}
+          currentGoalCount={data.tournamentProgress.totalGoals}
           leagueId={data.leagueId}
           predictionEntries={data.predictionEntries}
           predictionsByRow={data.specialPredictions}
@@ -128,6 +126,7 @@ export default async function ProfilePage() {
           Alle Spezialtipps
         </h2>
         <ProfileSpecialPickReveal
+          currentGoalCount={data.tournamentProgress.totalGoals}
           deadlineAt={data.specialPickDeadlineAt}
           entries={data.specialPickRevealEntries}
           revealable={data.specialPicksRevealable}

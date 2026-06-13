@@ -147,6 +147,7 @@ export type TournamentProgress = {
   completedMatches: number;
   nextKnockoutDate: string;
   stages: TournamentStageProgress[];
+  totalGoals: number;
   totalMatches: number;
 };
 
@@ -159,7 +160,10 @@ const tournamentStageTotals = [
   { label: "F", total: 2 },
 ];
 
-function buildTournamentProgress(completedMatches = 0): TournamentProgress {
+function buildTournamentProgress(
+  completedMatches = 0,
+  totalGoals = 0,
+): TournamentProgress {
   let remainingCompleted = completedMatches;
 
   return {
@@ -174,11 +178,20 @@ function buildTournamentProgress(completedMatches = 0): TournamentProgress {
         completed,
       };
     }),
+    totalGoals,
     totalMatches: tournamentStageTotals.reduce(
       (total, stage) => total + stage.total,
       0,
     ),
   };
+}
+
+function countTournamentGoals(matchRows: (typeof matches.$inferSelect)[]) {
+  return matchRows.reduce((total, match) => {
+    if (match.homeScore === null || match.awayScore === null) return total;
+
+    return total + match.homeScore + match.awayScore;
+  }, 0);
 }
 
 function seedData(
@@ -852,18 +865,19 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
   const { potByMatchId, payoutByMatchEntry, winningsByEntry } =
     buildJackpotState(dbMatches, dbPredictions, memberRows);
 
-  const mappedMatches = dbMatches.map((match) =>
+  const mapDbMatch = (match: typeof matches.$inferSelect) =>
     mapMatch(
       match,
       currentUserPredictionsByMatch.get(match.id),
       potByMatchId.get(match.id),
-    ),
-  );
+    );
+  const mappedMatches = dbMatches.map(mapDbMatch);
   const completedMatchCount = dbMatches.filter(
     (match) =>
       match.status === "done" ||
       (match.homeScore !== null && match.awayScore !== null),
   ).length;
+  const tournamentGoalCount = countTournamentGoals(dbMatches);
 
   const leaderboardRows = memberRows
     .flatMap((member) => {
@@ -915,7 +929,14 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     (match) => match.status === "open",
   );
   const todayMatches = incompleteMatches.slice(0, OPENING_SLATE_MATCH_COUNT);
-  const recentResults = mappedMatches.filter((match) => match.status === "done");
+  const recentResults = dbMatches
+    .filter((match) => inferStatus(match) === "done")
+    .sort((a, b) => {
+      const kickoffDiff = b.kickoffAt.getTime() - a.kickoffAt.getTime();
+
+      return kickoffDiff || (b.gameId ?? 0) - (a.gameId ?? 0);
+    })
+    .map(mapDbMatch);
   const upcomingMatches = incompleteMatches.slice(OPENING_SLATE_MATCH_COUNT);
   const currentMember = memberRows.find(
     (member) => member.userId === context.profileId,
@@ -982,7 +1003,10 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     todayMatches: todayMatches.length
       ? todayMatches
       : mappedMatches.slice(0, OPENING_SLATE_MATCH_COUNT),
-    tournamentProgress: buildTournamentProgress(completedMatchCount),
+    tournamentProgress: buildTournamentProgress(
+      completedMatchCount,
+      tournamentGoalCount,
+    ),
     upcomingMatches,
     userDisplayName: currentOwnerName,
     userEmail: context.userEmail,

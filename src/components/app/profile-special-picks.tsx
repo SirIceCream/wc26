@@ -59,14 +59,20 @@ function buildInitialState(
   ) as Record<number, RowState>;
 }
 
+function formatGoalCount(value: number) {
+  return `${value} ${value === 1 ? "Tor" : "Tore"}`;
+}
+
 export function ProfileSpecialPicks({
   canEdit,
+  currentGoalCount,
   leagueId,
   predictionEntries,
   predictionsByRow,
   teams,
 }: {
   canEdit: boolean;
+  currentGoalCount: number;
   leagueId: string | null;
   predictionEntries: PredictionEntry[];
   predictionsByRow: SpecialPredictionsByRow;
@@ -132,6 +138,46 @@ export function ProfileSpecialPicks({
     } finally {
       setSavingRows((currentSaving) => ({ ...currentSaving, [row]: false }));
     }
+  }
+
+  if (!canEdit) {
+    return (
+      <div className="grid gap-2">
+        {predictionEntries.map((entry) => {
+          const row = rows[entry.predictionRow];
+          const championTeamCode = row.savedChampionTeamCode;
+          const totalGoals = row.savedTotalGoals;
+
+          return (
+            <div
+              className="grid gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-3 shadow-sm sm:grid-cols-[7rem_1fr_auto] sm:items-center"
+              key={entry.predictionRow}
+            >
+              <div className="text-xs font-black uppercase text-zinc-500">
+                {entry.label}
+              </div>
+              <div className="flex min-w-0 items-center gap-2">
+                {championTeamCode ? (
+                  <>
+                    <TeamFlag code={championTeamCode} size="sm" />
+                    <span className="truncate text-sm font-black text-zinc-950">
+                      {getTeamLabel(championTeamCode)}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-sm font-semibold text-zinc-500">
+                    Kein Weltmeistertipp
+                  </span>
+                )}
+              </div>
+              <div className="rounded-md bg-yellow-100 px-2 py-1 text-xs font-black text-yellow-950">
+                Torwette {totalGoals ? `${totalGoals} Tore` : "kein Tipp"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   }
 
   return (
@@ -215,6 +261,9 @@ export function ProfileSpecialPicks({
                   type="number"
                   value={row.totalGoals}
                 />
+                <span className="mt-1 block text-xs font-semibold text-zinc-500">
+                  Aktuell: {formatGoalCount(currentGoalCount)}
+                </span>
               </label>
 
               <button

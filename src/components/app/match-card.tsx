@@ -14,25 +14,6 @@ function formatEuro(value: number) {
   })} EUR`;
 }
 
-function statusLabel(match: Match) {
-  if (match.status === "live") return "Live";
-  if (match.status === "done") return "Ende";
-  if (match.status === "open") {
-    return match.prediction ? "Tipp abgegeben" : "Tipp offen";
-  }
-  if (match.status === "locked") return "Gesperrt";
-  return "Demnächst";
-}
-
-function statusKind(match: Match) {
-  if (match.status === "live") return "live";
-  if (match.status === "done") return "done";
-  if (match.status === "open" && match.prediction) return "hit";
-  if (match.status === "open") return "open";
-  if (match.status === "locked") return "locked";
-  return "upcoming";
-}
-
 function getMatchTime(match: Match) {
   if (match.kickoffAt) {
     return formatViennaMatchTime(match.kickoffAt);
@@ -93,9 +74,7 @@ export function MatchRow({
             <span className="px-1 text-zinc-400">:</span>
             {match.score.away}
           </div>
-        ) : (
-          <StatusChip kind={statusKind(match)}>{statusLabel(match)}</StatusChip>
-        )}
+        ) : null}
 
         {match.status === "live" && match.minute ? (
           <StatusChip kind="live">{match.minute}</StatusChip>

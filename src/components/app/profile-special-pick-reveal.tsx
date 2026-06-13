@@ -30,6 +30,10 @@ function formatEuro(value: number) {
   })} EUR`;
 }
 
+function formatGoalCount(value: number) {
+  return `${value} ${value === 1 ? "Tor" : "Tore"}`;
+}
+
 function buildChampionGroups(entries: SpecialPickRevealEntry[]) {
   const groups = new Map<string, ChampionPickGroup>();
   const totalChampionPotEuros = entries.length * SPECIAL_PICK_STAKE_EUROS;
@@ -225,7 +229,13 @@ function ChampionReveal({ entries }: { entries: SpecialPickRevealEntry[] }) {
   );
 }
 
-function GoalsReveal({ entries }: { entries: SpecialPickRevealEntry[] }) {
+function GoalsReveal({
+  currentGoalCount,
+  entries,
+}: {
+  currentGoalCount: number;
+  entries: SpecialPickRevealEntry[];
+}) {
   const groups = buildGoalsGroups(entries);
 
   return (
@@ -240,9 +250,14 @@ function GoalsReveal({ entries }: { entries: SpecialPickRevealEntry[] }) {
               {entries.length} Tippreihen, gruppiert nach Gesamttoren.
             </div>
           </div>
-          <span className="rounded-lg bg-yellow-100 px-3 py-2 text-center text-xs font-black uppercase text-yellow-950">
-            Öffnen
-          </span>
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <span className="rounded-lg bg-yellow-100 px-3 py-2 text-center text-xs font-black uppercase text-yellow-950">
+              Aktuell {formatGoalCount(currentGoalCount)}
+            </span>
+            <span className="rounded-lg bg-zinc-100 px-3 py-2 text-center text-xs font-black uppercase text-zinc-700">
+              Öffnen
+            </span>
+          </div>
         </summary>
 
         <div className="border-t border-zinc-100">
@@ -283,10 +298,12 @@ function GoalsReveal({ entries }: { entries: SpecialPickRevealEntry[] }) {
 }
 
 export function ProfileSpecialPickReveal({
+  currentGoalCount,
   deadlineAt,
   entries,
   revealable,
 }: {
+  currentGoalCount: number;
   deadlineAt: string;
   entries: SpecialPickRevealEntry[];
   revealable: boolean;
@@ -319,7 +336,7 @@ export function ProfileSpecialPickReveal({
   return (
     <div className="grid gap-3">
       <ChampionReveal entries={entries} />
-      <GoalsReveal entries={entries} />
+      <GoalsReveal currentGoalCount={currentGoalCount} entries={entries} />
     </div>
   );
 }
