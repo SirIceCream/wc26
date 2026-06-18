@@ -30,15 +30,16 @@ function WhatsAppLink() {
   return (
     <a
       aria-label="Jack Bot auf WhatsApp schreiben"
-      className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#25D366] text-white shadow-sm transition hover:bg-[#1fb757] focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#25D366] px-3 text-sm font-black text-white shadow-sm transition hover:bg-[#1fb757] focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
       href={JACK_BOT_WHATSAPP_URL}
       rel="noreferrer"
       target="_blank"
       title="Jack Bot auf WhatsApp schreiben"
     >
+      <span>Message Bot</span>
       <svg
         aria-hidden="true"
-        className="h-5 w-5"
+        className="h-5 w-5 shrink-0"
         fill="currentColor"
         viewBox="0 0 32 32"
       >

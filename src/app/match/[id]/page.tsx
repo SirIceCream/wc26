@@ -77,11 +77,11 @@ function currentUserChipClasses(group: MatchPredictionGroup) {
 function TipsExportLink({ href }: { href: string }) {
   return (
     <a
-      aria-label="Tipps als XLS herunterladen"
+      aria-label="Tipps als XLSX herunterladen"
       className="inline-flex h-8 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2 text-[0.65rem] font-black uppercase text-zinc-700 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900"
       download
       href={href}
-      title="Tipps als XLS herunterladen"
+      title="Tipps als XLSX herunterladen"
     >
       <svg
         aria-hidden="true"
@@ -98,7 +98,7 @@ function TipsExportLink({ href }: { href: string }) {
         <path d="M12 18v-6" />
         <path d="m9 15 3 3 3-3" />
       </svg>
-      <span>XLS</span>
+      <span>XLSX</span>
     </a>
   );
 }

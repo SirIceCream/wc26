@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Buffer } from "node:buffer";
 import {
   getMatchIntegrityData,
   type MatchPredictionGroup,
@@ -10,13 +11,13 @@ import {
   getTeamShortLabel,
 } from "@/lib/tournament-data";
 
-function escapeHtml(value: string | number | null | undefined) {
+function escapeXml(value: string | number | null | undefined) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+    .replace(/'/g, "&apos;");
 }
 
 function formatEuro(value: number) {
@@ -59,12 +60,223 @@ function possibleWinLabel(group: MatchPredictionGroup) {
   return formatEuro(group.possibleWinEuros);
 }
 
-function rowClass(group: MatchPredictionGroup) {
-  if (group.isNoTip) return "no-tip";
-  if (group.isFinalScore || group.isCurrentScore) return "hit";
-  if (group.isImpossible) return "impossible";
+const crc32Table = new Uint32Array(256);
 
-  return "";
+for (let index = 0; index < crc32Table.length; index += 1) {
+  let value = index;
+
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+  }
+
+  crc32Table[index] = value >>> 0;
+}
+
+function crc32(buffer: Buffer) {
+  let crc = 0xffffffff;
+
+  for (const byte of buffer) {
+    crc = crc32Table[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  }
+
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function getDosDateTime(date = new Date()) {
+  const time =
+    (date.getHours() << 11) |
+    (date.getMinutes() << 5) |
+    Math.floor(date.getSeconds() / 2);
+  const day = date.getDate();
+  const month = date.getMonth() + 1;
+  const year = Math.max(date.getFullYear() - 1980, 0);
+
+  return {
+    date: (year << 9) | (month << 5) | day,
+    time,
+  };
+}
+
+function createZip(files: { name: string; content: string }[]) {
+  const localParts: Buffer[] = [];
+  const centralParts: Buffer[] = [];
+  let offset = 0;
+  const dos = getDosDateTime();
+
+  for (const file of files) {
+    const fileName = Buffer.from(file.name);
+    const content = Buffer.from(file.content);
+    const checksum = crc32(content);
+    const localHeader = Buffer.alloc(30);
+
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    localHeader.writeUInt16LE(20, 4);
+    localHeader.writeUInt16LE(0, 6);
+    localHeader.writeUInt16LE(0, 8);
+    localHeader.writeUInt16LE(dos.time, 10);
+    localHeader.writeUInt16LE(dos.date, 12);
+    localHeader.writeUInt32LE(checksum, 14);
+    localHeader.writeUInt32LE(content.length, 18);
+    localHeader.writeUInt32LE(content.length, 22);
+    localHeader.writeUInt16LE(fileName.length, 26);
+    localHeader.writeUInt16LE(0, 28);
+    localParts.push(localHeader, fileName, content);
+
+    const centralHeader = Buffer.alloc(46);
+
+    centralHeader.writeUInt32LE(0x02014b50, 0);
+    centralHeader.writeUInt16LE(20, 4);
+    centralHeader.writeUInt16LE(20, 6);
+    centralHeader.writeUInt16LE(0, 8);
+    centralHeader.writeUInt16LE(0, 10);
+    centralHeader.writeUInt16LE(dos.time, 12);
+    centralHeader.writeUInt16LE(dos.date, 14);
+    centralHeader.writeUInt32LE(checksum, 16);
+    centralHeader.writeUInt32LE(content.length, 20);
+    centralHeader.writeUInt32LE(content.length, 24);
+    centralHeader.writeUInt16LE(fileName.length, 28);
+    centralHeader.writeUInt16LE(0, 30);
+    centralHeader.writeUInt16LE(0, 32);
+    centralHeader.writeUInt16LE(0, 34);
+    centralHeader.writeUInt16LE(0, 36);
+    centralHeader.writeUInt32LE(0, 38);
+    centralHeader.writeUInt32LE(offset, 42);
+    centralParts.push(centralHeader, fileName);
+
+    offset += localHeader.length + fileName.length + content.length;
+  }
+
+  const centralDirectory = Buffer.concat(centralParts);
+  const end = Buffer.alloc(22);
+
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(0, 4);
+  end.writeUInt16LE(0, 6);
+  end.writeUInt16LE(files.length, 8);
+  end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(centralDirectory.length, 12);
+  end.writeUInt32LE(offset, 16);
+  end.writeUInt16LE(0, 20);
+
+  return Buffer.concat([...localParts, centralDirectory, end]);
+}
+
+function columnName(index: number) {
+  let value = index + 1;
+  let name = "";
+
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    name = String.fromCharCode(65 + remainder) + name;
+    value = Math.floor((value - 1) / 26);
+  }
+
+  return name;
+}
+
+function worksheetXml(rows: string[][]) {
+  const sheetRows = rows
+    .map((row, rowIndex) => {
+      const rowNumber = rowIndex + 1;
+      const cells = row
+        .map((value, columnIndex) => {
+          const reference = `${columnName(columnIndex)}${rowNumber}`;
+
+          return `<c r="${reference}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
+        })
+        .join("");
+
+      return `<row r="${rowNumber}">${cells}</row>`;
+    })
+    .join("");
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <cols>
+    <col min="1" max="1" width="24" customWidth="1"/>
+    <col min="2" max="2" width="26" customWidth="1"/>
+    <col min="3" max="3" width="26" customWidth="1"/>
+    <col min="4" max="4" width="14" customWidth="1"/>
+    <col min="5" max="5" width="24" customWidth="1"/>
+    <col min="6" max="6" width="18" customWidth="1"/>
+  </cols>
+  <sheetData>${sheetRows}</sheetData>
+</worksheet>`;
+}
+
+function createWorkbook(rows: string[][]) {
+  return createZip([
+    {
+      name: "[Content_Types].xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`,
+    },
+    {
+      name: "_rels/.rels",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`,
+    },
+    {
+      name: "xl/workbook.xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="Tipps" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`,
+    },
+    {
+      name: "xl/_rels/workbook.xml.rels",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`,
+    },
+    {
+      name: "xl/worksheets/sheet1.xml",
+      content: worksheetXml(rows),
+    },
+  ]);
+}
+
+function workbookRows({
+  rows,
+  score,
+  stage,
+  time,
+  title,
+}: {
+  rows: { group: MatchPredictionGroup; submission: MatchPredictionSubmission }[];
+  score: string;
+  stage: string;
+  time: string;
+  title: string;
+}) {
+  return [
+    ["Spiel", title],
+    ["Phase", stage],
+    ["Zeit", time],
+    ["Spielstand", score],
+    [],
+    ["Tippreihe", "Name", "Benutzername", "Tipp", "Status", "Möglicher Gewinn"],
+    ...(rows.length
+      ? rows.map(({ group, submission }) => [
+          submission.entryName,
+          submission.displayName,
+          submission.username ? `@${submission.username}` : "",
+          tipLabel(group, submission),
+          groupStatusLabel(group),
+          possibleWinLabel(group),
+        ])
+      : [["Keine Tipps sichtbar."]]),
+  ];
 }
 
 export async function GET(
@@ -91,93 +303,23 @@ export async function GET(
   const rows = data.groups.flatMap((group) =>
     group.submissions.map((submission) => ({ group, submission })),
   );
-  const tableRows = rows.length
-    ? rows
-        .map(
-          ({ group, submission }) => `
-            <tr class="${rowClass(group)}">
-              <td>${escapeHtml(submission.entryName)}</td>
-              <td>${escapeHtml(submission.displayName)}</td>
-              <td>${escapeHtml(submission.username ? `@${submission.username}` : "")}</td>
-              <td class="text">${escapeHtml(tipLabel(group, submission))}</td>
-              <td>${escapeHtml(groupStatusLabel(group))}</td>
-              <td>${escapeHtml(possibleWinLabel(group))}</td>
-            </tr>`,
-        )
-        .join("")
-    : '<tr><td colspan="6">Keine Tipps sichtbar.</td></tr>';
-  const filename = `tipps-${filenamePart(getTeamShortLabel(data.match.home))}-${filenamePart(getTeamShortLabel(data.match.away))}.xls`;
-  const html = `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        color: #18181b;
-      }
-      h1 {
-        margin: 0 0 6px;
-        font-size: 22px;
-      }
-      .meta {
-        margin: 0 0 18px;
-        color: #52525b;
-        font-size: 13px;
-        font-weight: 700;
-      }
-      table {
-        border-collapse: collapse;
-        width: 100%;
-      }
-      th {
-        background: #18181b;
-        color: #ffffff;
-        font-weight: 700;
-        text-align: left;
-      }
-      th,
-      td {
-        border: 1px solid #d4d4d8;
-        padding: 8px 10px;
-      }
-      td.text {
-        mso-number-format: "\\@";
-      }
-      tr.hit td {
-        background: #dcfce7;
-      }
-      tr.impossible td,
-      tr.no-tip td {
-        background: #f4f4f5;
-        color: #71717a;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>${escapeHtml(title)}</h1>
-    <p class="meta">${escapeHtml(getStageLabel(data.match.stage))} | ${escapeHtml(data.match.time)} | Spielstand: ${escapeHtml(score)}</p>
-    <table>
-      <thead>
-        <tr>
-          <th>Tippreihe</th>
-          <th>Name</th>
-          <th>Benutzername</th>
-          <th>Tipp</th>
-          <th>Status</th>
-          <th>Möglicher Gewinn</th>
-        </tr>
-      </thead>
-      <tbody>${tableRows}</tbody>
-    </table>
-  </body>
-</html>`;
+  const filename = `tipps-${filenamePart(getTeamShortLabel(data.match.home))}-${filenamePart(getTeamShortLabel(data.match.away))}.xlsx`;
+  const workbook = createWorkbook(
+    workbookRows({
+      rows,
+      score,
+      stage: getStageLabel(data.match.stage),
+      time: data.match.time,
+      title,
+    }),
+  );
 
-  return new NextResponse(`\ufeff${html}`, {
+  return new NextResponse(workbook, {
     headers: {
       "Cache-Control": "no-store",
       "Content-Disposition": `attachment; filename="${filename}"`,
-      "Content-Type": "application/vnd.ms-excel; charset=utf-8",
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     },
   });
 }

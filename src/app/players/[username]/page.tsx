@@ -59,10 +59,7 @@ export default async function PlayerProfilePage({
       </div>
 
       <div className="mb-6">
-        <p className="text-xs font-bold uppercase text-emerald-800">
-          @{data.username}
-        </p>
-        <h1 className="mt-2 text-3xl font-black text-zinc-950">
+        <h1 className="text-3xl font-black text-zinc-950">
           Profil von {data.displayName}
         </h1>
         <p className="mt-2 text-sm font-semibold text-zinc-500">
