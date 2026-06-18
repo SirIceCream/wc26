@@ -195,10 +195,9 @@ function worksheetXml(rows: string[][]) {
   <cols>
     <col min="1" max="1" width="24" customWidth="1"/>
     <col min="2" max="2" width="26" customWidth="1"/>
-    <col min="3" max="3" width="26" customWidth="1"/>
-    <col min="4" max="4" width="14" customWidth="1"/>
-    <col min="5" max="5" width="24" customWidth="1"/>
-    <col min="6" max="6" width="18" customWidth="1"/>
+    <col min="3" max="3" width="14" customWidth="1"/>
+    <col min="4" max="4" width="24" customWidth="1"/>
+    <col min="5" max="5" width="18" customWidth="1"/>
   </cols>
   <sheetData>${sheetRows}</sheetData>
 </worksheet>`;
@@ -265,12 +264,11 @@ function workbookRows({
     ["Zeit", time],
     ["Spielstand", score],
     [],
-    ["Tippreihe", "Name", "Benutzername", "Tipp", "Status", "Möglicher Gewinn"],
+    ["Tippreihe", "Name", "Tipp", "Status", "Möglicher Gewinn"],
     ...(rows.length
       ? rows.map(({ group, submission }) => [
           submission.entryName,
           submission.displayName,
-          submission.username ? `@${submission.username}` : "",
           tipLabel(group, submission),
           groupStatusLabel(group),
           possibleWinLabel(group),
