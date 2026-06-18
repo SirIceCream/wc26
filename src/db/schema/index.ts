@@ -45,6 +45,27 @@ export const appMetadata = pgTable("app_metadata", {
     .notNull(),
 });
 
+export const userChangelogAcknowledgements = pgTable(
+  "user_changelog_acknowledgements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    changelogKey: text("changelog_key").notNull(),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("user_changelog_ack_user_key_unique").on(
+      table.userId,
+      table.changelogKey,
+    ),
+    index("user_changelog_ack_user_id_idx").on(table.userId),
+  ],
+);
+
 export const leagues = pgTable("leagues", {
   id: uuid("id").defaultRandom().primaryKey(),
   slug: text("slug").notNull().unique(),

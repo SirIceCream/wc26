@@ -13,6 +13,8 @@ const navItems = [
   { href: "/profile", label: "Mein Profil" },
 ];
 
+const JACK_BOT_WHATSAPP_URL = "https://wa.me/4367764724584";
+
 type AppNavClientProps = {
   isAuthenticated: boolean;
   signOutAction: () => Promise<void>;
@@ -22,6 +24,28 @@ type AppNavClientProps = {
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname.startsWith(href);
+}
+
+function WhatsAppLink() {
+  return (
+    <a
+      aria-label="Jack Bot auf WhatsApp schreiben"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#25D366] text-white shadow-sm transition hover:bg-[#1fb757] focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+      href={JACK_BOT_WHATSAPP_URL}
+      rel="noreferrer"
+      target="_blank"
+      title="Jack Bot auf WhatsApp schreiben"
+    >
+      <svg
+        aria-hidden="true"
+        className="h-5 w-5"
+        fill="currentColor"
+        viewBox="0 0 32 32"
+      >
+        <path d="M16.04 3.2A12.7 12.7 0 0 0 3.35 15.88c0 2.24.59 4.43 1.72 6.36L3.2 28.8l6.72-1.77a12.62 12.62 0 0 0 6.12 1.56h.01A12.7 12.7 0 0 0 28.8 15.92 12.71 12.71 0 0 0 16.04 3.2Zm.01 23.24h-.01a10.5 10.5 0 0 1-5.35-1.46l-.38-.23-3.99 1.05 1.06-3.89-.25-.4a10.49 10.49 0 1 1 8.92 4.93Zm5.75-7.85c-.31-.16-1.86-.92-2.15-1.02-.29-.11-.5-.16-.71.16-.21.31-.81 1.02-.99 1.23-.18.21-.37.24-.68.08-.31-.16-1.33-.49-2.53-1.56-.94-.84-1.57-1.87-1.75-2.18-.18-.32-.02-.49.14-.65.14-.14.31-.37.47-.55.16-.18.21-.31.31-.52.1-.21.05-.39-.03-.55-.08-.16-.71-1.71-.97-2.34-.26-.62-.52-.53-.71-.54h-.6c-.21 0-.55.08-.84.39-.29.31-1.1 1.08-1.1 2.63 0 1.55 1.13 3.05 1.29 3.26.16.21 2.23 3.41 5.4 4.78.75.32 1.34.52 1.8.66.76.24 1.45.21 1.99.13.61-.09 1.86-.76 2.12-1.5.26-.74.26-1.37.18-1.5-.08-.13-.29-.21-.6-.37Z" />
+      </svg>
+    </a>
+  );
 }
 
 export function AppNavClient({
@@ -66,28 +90,34 @@ export function AppNavClient({
               </Link>
             ))}
           </div>
-          {isAuthenticated ? (
-            <form
-              action={signOutAction}
-              className={cn(isActive(pathname, "/profile") ? "block" : "hidden", "md:block")}
-            >
-              <SubmitButton
-                className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-bold text-white hover:bg-zinc-800"
-                pendingLabel="Meldet ab..."
-                title={userEmail ?? undefined}
-                type="submit"
+          <div className="flex items-center gap-2">
+            <WhatsAppLink />
+            {isAuthenticated ? (
+              <form
+                action={signOutAction}
+                className={cn(
+                  isActive(pathname, "/profile") ? "block" : "hidden",
+                  "md:block",
+                )}
               >
-                Logout
-              </SubmitButton>
-            </form>
-          ) : (
-            <Link
-              className="hidden rounded-lg bg-zinc-950 px-4 py-2 text-sm font-bold text-white hover:bg-zinc-800 md:inline-flex"
-              href="/login"
-            >
-              Login
-            </Link>
-          )}
+                <SubmitButton
+                  className="rounded-lg bg-zinc-950 px-4 py-2 text-sm font-bold text-white hover:bg-zinc-800"
+                  pendingLabel="Meldet ab..."
+                  title={userEmail ?? undefined}
+                  type="submit"
+                >
+                  Logout
+                </SubmitButton>
+              </form>
+            ) : (
+              <Link
+                className="hidden rounded-lg bg-zinc-950 px-4 py-2 text-sm font-bold text-white hover:bg-zinc-800 md:inline-flex"
+                href="/login"
+              >
+                Login
+              </Link>
+            )}
+          </div>
         </nav>
       </header>
 

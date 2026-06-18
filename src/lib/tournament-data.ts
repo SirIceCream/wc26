@@ -91,6 +91,8 @@ export type Match = {
 export type LeaderboardRow = {
   rank: number;
   previousRank: number;
+  userId?: string;
+  username?: string;
   name: string;
   ownerName?: string;
   entryLabel?: string;

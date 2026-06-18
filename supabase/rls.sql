@@ -4,6 +4,7 @@
 
 alter table public.profiles enable row level security;
 alter table public.app_metadata enable row level security;
+alter table public.user_changelog_acknowledgements enable row level security;
 alter table public.leagues enable row level security;
 alter table public.league_members enable row level security;
 alter table public.teams enable row level security;
@@ -65,6 +66,8 @@ drop policy if exists "users can update their own profile" on public.profiles;
 drop policy if exists "admins can update profiles" on public.profiles;
 drop policy if exists "anyone can read app metadata" on public.app_metadata;
 drop policy if exists "admins can manage app metadata" on public.app_metadata;
+drop policy if exists "users can read their own changelog acknowledgements" on public.user_changelog_acknowledgements;
+drop policy if exists "users can create their own changelog acknowledgements" on public.user_changelog_acknowledgements;
 drop policy if exists "members can read their leagues" on public.leagues;
 drop policy if exists "members can read their league memberships" on public.league_members;
 drop policy if exists "authenticated users can read teams" on public.teams;
@@ -124,6 +127,16 @@ on public.app_metadata for all
 to authenticated
 using (public.is_app_admin())
 with check (public.is_app_admin());
+
+create policy "users can read their own changelog acknowledgements"
+on public.user_changelog_acknowledgements for select
+to authenticated
+using (user_id = auth.uid());
+
+create policy "users can create their own changelog acknowledgements"
+on public.user_changelog_acknowledgements for insert
+to authenticated
+with check (user_id = auth.uid());
 
 create policy "members can read their leagues"
 on public.leagues for select

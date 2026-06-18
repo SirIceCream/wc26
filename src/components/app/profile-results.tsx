@@ -34,7 +34,13 @@ function predictionLabel(result: ProfileResultRow) {
   return `${result.predictedScore.home}:${result.predictedScore.away}`;
 }
 
-export function ProfileResults({ results }: { results: ProfileResultRow[] }) {
+export function ProfileResults({
+  predictionLabelText = "Mein Tipp",
+  results,
+}: {
+  predictionLabelText?: string;
+  results: ProfileResultRow[];
+}) {
   if (!results.length) {
     return (
       <Surface className="p-4">
@@ -89,7 +95,7 @@ export function ProfileResults({ results }: { results: ProfileResultRow[] }) {
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-zinc-500">
                 <span className="rounded-md bg-emerald-50 px-2 py-1 font-black text-emerald-900 ring-1 ring-emerald-100">
-                  Mein Tipp: {predictionLabel(result)}
+                  {predictionLabelText}: {predictionLabel(result)}
                 </span>
                 <span>
                   {getTeamShortLabel(result.home)} - {getTeamShortLabel(result.away)}

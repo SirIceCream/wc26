@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChangelogPopup } from "@/components/app/changelog-popup";
 import { DataModeBanner } from "@/components/app/data-mode-banner";
 import { LeaderboardMiniRow } from "@/components/app/leaderboard";
 import { LockCountdown } from "@/components/app/lock-countdown";
@@ -206,6 +207,7 @@ export default async function Home() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:grid lg:grid-cols-[1fr_22rem] lg:py-8">
+      <ChangelogPopup changelog={data.activeChangelog} />
       <div className="flex flex-col gap-6">
         <DataModeBanner connected={data.connected} />
 

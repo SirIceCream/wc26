@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { LeaderboardRow } from "@/lib/tournament-data";
 import { cn } from "@/lib/utils";
 import { Avatar, Surface } from "./primitives";
@@ -7,6 +8,37 @@ function formatEuro(value: number) {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
   })} EUR`;
+}
+
+function profileHref(row: LeaderboardRow) {
+  if (!row.username) return null;
+
+  return row.isCurrentUser
+    ? "/profile"
+    : `/players/${encodeURIComponent(row.username)}`;
+}
+
+function PlayerNameLink({
+  className,
+  row,
+}: {
+  className?: string;
+  row: LeaderboardRow;
+}) {
+  const href = profileHref(row);
+
+  if (!href) {
+    return <span className={className}>{row.name}</span>;
+  }
+
+  return (
+    <Link
+      className={cn("transition hover:underline", className)}
+      href={href}
+    >
+      {row.name}
+    </Link>
+  );
 }
 
 export function LeaderboardMiniRow({
@@ -36,14 +68,13 @@ export function LeaderboardMiniRow({
       </div>
       <Avatar name={avatarName} compact />
       <div className="min-w-0">
-        <div
+        <PlayerNameLink
           className={cn(
-            "truncate text-sm text-zinc-950",
+            "block truncate text-sm text-zinc-950",
             row.isCurrentUser ? "font-black" : "font-semibold",
           )}
-        >
-          {row.name}
-        </div>
+          row={row}
+        />
         <div className="text-xs font-medium text-zinc-500">
           {row.entryLabel ?? "Tippreihe 1"}
         </div>
@@ -123,7 +154,10 @@ export function Podium({ rows }: { rows: LeaderboardRow[] }) {
             <div className="mx-auto mb-2 flex justify-center">
               <RankBadge rank={row.rank} />
             </div>
-            <div className="truncate text-sm font-bold">{row.name}</div>
+            <PlayerNameLink
+              className="block truncate text-sm font-bold text-white"
+              row={row}
+            />
             <div className="text-2xl font-black text-yellow-200">
               {formatEuro(row.points)}
             </div>

@@ -8,7 +8,9 @@ import {
   predictions,
   profiles,
   specialPredictions,
+  userChangelogAcknowledgements,
 } from "@/db/schema";
+import { ACTIVE_CHANGELOG, type ActiveChangelog } from "@/lib/changelog";
 import {
   OPENING_SLATE_MATCH_COUNT,
   leaderboard as seedLeaderboard,
@@ -39,6 +41,7 @@ type UserContext = {
 };
 
 export type AppData = {
+  activeChangelog: ActiveChangelog | null;
   connected: boolean;
   hasAdditionalTippreihe: boolean;
   leagueId: string | null;
@@ -100,20 +103,23 @@ export type MatchPredictionSubmission = {
   entryName: string;
   entryLabel: string;
   predictionRow: number;
+  username?: string;
   homeScore: number;
   awayScore: number;
   isCurrentUser: boolean;
+  isNoTip?: boolean;
 };
 
 export type MatchPredictionGroup = {
   scoreline: string;
-  homeScore: number;
-  awayScore: number;
+  homeScore: number | null;
+  awayScore: number | null;
   count: number;
   possibleWinEuros: number;
   isCurrentScore: boolean;
   isFinalScore: boolean;
   isImpossible: boolean;
+  isNoTip: boolean;
   submissions: MatchPredictionSubmission[];
 };
 
@@ -135,6 +141,21 @@ export type MatchIntegrityData = {
   groups: MatchPredictionGroup[];
   userPotentialWins: UserPotentialWin[];
   totalTippreihen: number;
+};
+
+export type PlayerProfileData = {
+  connected: boolean;
+  displayName: string;
+  isCurrentUser: boolean;
+  leaderboardEntries: LeaderboardRow[];
+  leagueId: string | null;
+  predictionEntries: PredictionEntry[];
+  profileResults: ProfileResultRow[];
+  specialPickDeadlineAt: string;
+  specialPicksRevealable: boolean;
+  specialPredictions: SpecialPredictionsByRow;
+  tournamentProgress: TournamentProgress;
+  username: string;
 };
 
 export type TournamentStageProgress = {
@@ -199,6 +220,7 @@ function seedData(
   userDisplayName = "Alex 1",
 ): AppData {
   return {
+    activeChangelog: null,
     connected: false,
     hasAdditionalTippreihe: seedPredictionEntries.some(
       (entry) => entry.isAdditional,
@@ -452,6 +474,7 @@ type DbPrediction = typeof predictions.$inferSelect;
 type DbSpecialPrediction = typeof specialPredictions.$inferSelect;
 type LeagueMemberRead = {
   userId: string;
+  username: string;
   usesTwoPredictionRows: boolean;
   displayName: string;
 };
@@ -662,6 +685,24 @@ function buildSpecialPickRevealEntries({
   );
 }
 
+function buildSpecialPredictionsByRowForUser(
+  specialPredictionRows: DbSpecialPrediction[],
+  userId: string | null,
+) {
+  return Object.fromEntries(
+    specialPredictionRows
+      .filter((prediction) => prediction.userId === userId)
+      .map((prediction) => [
+        prediction.predictionRow,
+        {
+          championTeamCode: prediction.championTeamCode,
+          predictionRow: prediction.predictionRow,
+          totalGoals: prediction.totalGoals,
+        },
+      ]),
+  ) as SpecialPredictionsByRow;
+}
+
 function countMissedPredictions({
   matches,
   predictionEntries,
@@ -710,6 +751,7 @@ function buildSubmissions({
         entryName,
         entryLabel: `Tippreihe ${prediction.predictionRow}`,
         predictionRow: prediction.predictionRow,
+        username: member?.username,
         homeScore: prediction.homeScore,
         awayScore: prediction.awayScore,
         isCurrentUser: prediction.userId === currentUserId,
@@ -728,12 +770,58 @@ function buildSubmissions({
     });
 }
 
+function buildNoTipSubmissions({
+  currentUserId,
+  matchPredictions,
+  memberRows,
+}: {
+  currentUserId: string | null;
+  matchPredictions: DbPrediction[];
+  memberRows: LeagueMemberRead[];
+}): MatchPredictionSubmission[] {
+  const submittedEntries = new Set(
+    matchPredictions.map((prediction) =>
+      predictionEntryKey(prediction.userId, prediction.predictionRow),
+    ),
+  );
+
+  return memberRows
+    .flatMap((member) =>
+      getPredictionRows(member)
+        .filter(
+          (predictionRow) =>
+            !submittedEntries.has(
+              predictionEntryKey(member.userId, predictionRow),
+            ),
+        )
+        .map((predictionRow) => ({
+          id: `no-tip-${member.userId}-${predictionRow}`,
+          displayName: member.displayName,
+          entryName: getEntryName(member, predictionRow),
+          entryLabel: `Tippreihe ${predictionRow}`,
+          predictionRow,
+          username: member.username,
+          homeScore: -1,
+          awayScore: -1,
+          isCurrentUser: member.userId === currentUserId,
+          isNoTip: true,
+        })),
+    )
+    .sort(
+      (a, b) =>
+        a.displayName.localeCompare(b.displayName, "de-AT") ||
+        a.predictionRow - b.predictionRow,
+    );
+}
+
 function buildPredictionGroups({
   match,
+  noTipSubmissions = [],
   pot,
   submissions,
 }: {
   match: DbMatch;
+  noTipSubmissions?: MatchPredictionSubmission[];
   pot: NonNullable<Match["pot"]>;
   submissions: MatchPredictionSubmission[];
 }): MatchPredictionGroup[] {
@@ -751,8 +839,8 @@ function buildPredictionGroups({
     groups.set(scoreline, group);
   }
 
-  return [...groups.entries()]
-    .map(([scoreline, groupedSubmissions]) => {
+  const predictionGroups: MatchPredictionGroup[] = [...groups.entries()].map(
+    ([scoreline, groupedSubmissions]) => {
       const [homeScore, awayScore] = scoreline
         .split(":")
         .map((value) => Number.parseInt(value, 10));
@@ -774,23 +862,47 @@ function buildPredictionGroups({
           (match.status === "done"
             ? finalScoreline !== scoreline
             : homeScore < match.homeScore || awayScore < match.awayScore),
+        isNoTip: false,
         submissions: groupedSubmissions,
       };
-    })
-    .sort((a, b) => {
-      const aHighlighted = a.isFinalScore || a.isCurrentScore;
-      const bHighlighted = b.isFinalScore || b.isCurrentScore;
+    },
+  );
 
-      if (aHighlighted !== bHighlighted) return aHighlighted ? -1 : 1;
-      if (a.isImpossible !== b.isImpossible) return a.isImpossible ? 1 : -1;
+  const noTipGroups: MatchPredictionGroup[] = noTipSubmissions.length
+    ? [
+        {
+          scoreline: "Kein Tipp",
+          homeScore: null,
+          awayScore: null,
+          count: noTipSubmissions.length,
+          possibleWinEuros: 0,
+          isCurrentScore: false,
+          isFinalScore: false,
+          isImpossible: true,
+          isNoTip: true,
+          submissions: noTipSubmissions,
+        },
+      ]
+    : [];
 
-      return (
-        b.count - a.count ||
-        b.possibleWinEuros - a.possibleWinEuros ||
-        a.homeScore - b.homeScore ||
-        a.awayScore - b.awayScore
-      );
-    });
+  return [...predictionGroups, ...noTipGroups].sort((a, b) => {
+    if (a.isNoTip !== b.isNoTip) return a.isNoTip ? 1 : -1;
+
+    const aHighlighted = a.isFinalScore || a.isCurrentScore;
+    const bHighlighted = b.isFinalScore || b.isCurrentScore;
+
+    if (aHighlighted !== bHighlighted) return aHighlighted ? -1 : 1;
+    if (a.isImpossible !== b.isImpossible) return a.isImpossible ? 1 : -1;
+
+    return (
+      b.count - a.count ||
+      b.possibleWinEuros - a.possibleWinEuros ||
+      (a.homeScore ?? Number.POSITIVE_INFINITY) -
+        (b.homeScore ?? Number.POSITIVE_INFINITY) ||
+      (a.awayScore ?? Number.POSITIVE_INFINITY) -
+        (b.awayScore ?? Number.POSITIVE_INFINITY)
+    );
+  });
 }
 
 async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
@@ -837,23 +949,16 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     currentUserPredictionsByMatch.set(prediction.matchId, matchPredictions);
   }
 
-  const currentUserSpecialPredictions = Object.fromEntries(
-    dbSpecialPredictions
-      .filter((prediction) => prediction.userId === context.profileId)
-      .map((prediction) => [
-        prediction.predictionRow,
-        {
-          championTeamCode: prediction.championTeamCode,
-          predictionRow: prediction.predictionRow,
-          totalGoals: prediction.totalGoals,
-        },
-      ]),
-  ) as SpecialPredictionsByRow;
+  const currentUserSpecialPredictions = buildSpecialPredictionsByRowForUser(
+    dbSpecialPredictions,
+    context.profileId,
+  );
 
   const memberRows = league
     ? await db
         .select({
           userId: leagueMembers.userId,
+          username: profiles.username,
           usesTwoPredictionRows: leagueMembers.usesTwoPredictionRows,
           displayName: profiles.displayName,
         })
@@ -904,6 +1009,8 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
         return {
           rank: 0,
           previousRank: 0,
+          userId: member.userId,
+          username: member.username,
           name: entryName,
           ownerName: member.displayName,
           entryLabel: `Tippreihe ${predictionRow}`,
@@ -979,8 +1086,29 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     matches: mappedMatches,
     predictionEntries,
   });
+  let activeChangelog: ActiveChangelog | null = null;
+
+  if (context.profileId) {
+    try {
+      const [changelogAcknowledgement] = await db
+        .select({ id: userChangelogAcknowledgements.id })
+        .from(userChangelogAcknowledgements)
+        .where(
+          and(
+            eq(userChangelogAcknowledgements.userId, context.profileId),
+            eq(userChangelogAcknowledgements.changelogKey, ACTIVE_CHANGELOG.key),
+          ),
+        )
+        .limit(1);
+
+      activeChangelog = changelogAcknowledgement ? null : ACTIVE_CHANGELOG;
+    } catch (error) {
+      console.error("Unable to load changelog acknowledgement:", error);
+    }
+  }
 
   return {
+    activeChangelog,
     connected: true,
     hasAdditionalTippreihe: currentUserHasTwoRows,
     leagueId: league?.id ?? null,
@@ -1029,6 +1157,163 @@ export async function getAppData(): Promise<AppData> {
   return seedData(context.userEmail, context.displayName ?? "Alex 1");
 }
 
+export async function getPlayerProfileData(
+  username: string,
+): Promise<PlayerProfileData | null> {
+  const context = await ensureReadyUserContext();
+  const normalizedUsername = username.trim().toLowerCase();
+
+  if (
+    !context.profileId ||
+    !normalizedUsername ||
+    !isSupabaseConfigured() ||
+    !isDatabaseConfigured()
+  ) {
+    return null;
+  }
+
+  try {
+    const db = getDb();
+    const [league] = await db
+      .select()
+      .from(leagues)
+      .where(eq(leagues.slug, DEFAULT_LEAGUE_SLUG))
+      .limit(1);
+
+    if (!league) return null;
+
+    const [dbMatches, dbPredictions, dbSpecialPredictions, memberRows] =
+      await Promise.all([
+        db.select().from(matches).orderBy(asc(matches.kickoffAt)),
+        db
+          .select()
+          .from(predictions)
+          .where(eq(predictions.leagueId, league.id)),
+        db
+          .select()
+          .from(specialPredictions)
+          .where(eq(specialPredictions.leagueId, league.id)),
+        db
+          .select({
+            userId: leagueMembers.userId,
+            username: profiles.username,
+            usesTwoPredictionRows: leagueMembers.usesTwoPredictionRows,
+            displayName: profiles.displayName,
+          })
+          .from(leagueMembers)
+          .innerJoin(profiles, eq(leagueMembers.userId, profiles.id))
+          .where(eq(leagueMembers.leagueId, league.id)),
+      ]);
+
+    const targetMember = memberRows.find(
+      (member) => member.username.toLowerCase() === normalizedUsername,
+    );
+
+    if (!targetMember || dbMatches.length === 0) return null;
+
+    const { payoutByMatchEntry, winningsByEntry } = buildJackpotState(
+      dbMatches,
+      dbPredictions,
+      memberRows,
+    );
+    const completedMatchCount = dbMatches.filter(
+      (match) =>
+        match.status === "done" ||
+        (match.homeScore !== null && match.awayScore !== null),
+    ).length;
+    const tournamentGoalCount = countTournamentGoals(dbMatches);
+    const leaderboardEntries = memberRows
+      .flatMap((member) => {
+        const predictionRows = getPredictionRows(member);
+
+        return predictionRows.map((predictionRow) => {
+          const memberPredictions = dbPredictions.filter(
+            (prediction) =>
+              prediction.userId === member.userId &&
+              prediction.predictionRow === predictionRow,
+          );
+          const exact = memberPredictions.filter((prediction) => {
+            const match = dbMatches.find(
+              (dbMatch) => dbMatch.id === prediction.matchId,
+            );
+
+            return match?.status === "done"
+              ? isExactPrediction(match, prediction)
+              : false;
+          }).length;
+          const winningsEuros =
+            winningsByEntry.get(
+              predictionEntryKey(member.userId, predictionRow),
+            ) ?? 0;
+          const entryName = getEntryName(member, predictionRow);
+
+          return {
+            rank: 0,
+            previousRank: 0,
+            userId: member.userId,
+            username: member.username,
+            name: entryName,
+            ownerName: member.displayName,
+            entryLabel: `Tippreihe ${predictionRow}`,
+            hasAdditionalTippreihe: member.usesTwoPredictionRows,
+            isAdditionalEntry: predictionRow === 2,
+            points: winningsEuros,
+            winningsEuros,
+            exact,
+            total: memberPredictions.length,
+            isCurrentUser: member.userId === context.profileId,
+          };
+        });
+      })
+      .sort((a, b) => b.points - a.points)
+      .map((row, index) => ({
+        ...row,
+        rank: index + 1,
+        previousRank: index + 1,
+      }))
+      .filter((row) => row.userId === targetMember.userId);
+    const predictionEntries: PredictionEntry[] = getPredictionRows(
+      targetMember,
+    ).map((predictionRow) => ({
+      id: `row-${predictionRow}`,
+      label: `Tippreihe ${predictionRow}`,
+      ownerName: targetMember.displayName,
+      predictionRow,
+      isAdditional: predictionRow === 2,
+    }));
+
+    return {
+      connected: true,
+      displayName: targetMember.displayName,
+      isCurrentUser: targetMember.userId === context.profileId,
+      leaderboardEntries,
+      leagueId: league.id,
+      predictionEntries,
+      profileResults: buildProfileResults({
+        currentMember: targetMember,
+        currentUserId: targetMember.userId,
+        dbMatches,
+        dbPredictions,
+        payoutByMatchEntry,
+      }),
+      specialPickDeadlineAt: SPECIAL_PICKS_LOCK_AT,
+      specialPicksRevealable: new Date(SPECIAL_PICKS_LOCK_AT) <= new Date(),
+      specialPredictions: buildSpecialPredictionsByRowForUser(
+        dbSpecialPredictions,
+        targetMember.userId,
+      ),
+      tournamentProgress: buildTournamentProgress(
+        completedMatchCount,
+        tournamentGoalCount,
+      ),
+      username: targetMember.username,
+    };
+  } catch (error) {
+    console.error("Unable to load player profile data:", error);
+    return null;
+  }
+}
+
 async function ensureReadyUserContext() {
   const context = await ensureUserContext();
 
@@ -1065,6 +1350,7 @@ export async function getMatchIntegrityData(
     const [currentMember] = await db
       .select({
         userId: leagueMembers.userId,
+        username: profiles.username,
         usesTwoPredictionRows: leagueMembers.usesTwoPredictionRows,
         displayName: profiles.displayName,
       })
@@ -1092,6 +1378,7 @@ export async function getMatchIntegrityData(
     const memberRows = await db
       .select({
         userId: leagueMembers.userId,
+        username: profiles.username,
         usesTwoPredictionRows: leagueMembers.usesTwoPredictionRows,
         displayName: profiles.displayName,
       })
@@ -1129,8 +1416,15 @@ export async function getMatchIntegrityData(
       matchPredictions: visiblePredictions,
       memberRows,
     });
+    const noTipSubmissions = revealAllPredictions
+      ? buildNoTipSubmissions({
+          currentUserId: context.profileId,
+          matchPredictions,
+          memberRows,
+        })
+      : [];
     const groups = revealAllPredictions
-      ? buildPredictionGroups({ match, pot, submissions })
+      ? buildPredictionGroups({ match, noTipSubmissions, pot, submissions })
       : [];
     const groupByScoreline = new Map(
       groups.map((group) => [group.scoreline, group]),

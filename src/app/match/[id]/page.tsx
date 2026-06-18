@@ -67,10 +67,40 @@ function tipStatusLabel(group?: MatchPredictionGroup) {
 }
 
 function currentUserChipClasses(group: MatchPredictionGroup) {
+  if (group.isNoTip) return "bg-zinc-100 text-zinc-400";
   if (group.isImpossible) return "bg-red-100 text-red-800";
   if (group.isFinalScore || group.isCurrentScore) return "bg-emerald-800 text-white";
 
   return "bg-yellow-100 text-yellow-950";
+}
+
+function TipsExportLink({ href }: { href: string }) {
+  return (
+    <a
+      aria-label="Tipps als XLS herunterladen"
+      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2 text-[0.65rem] font-black uppercase text-zinc-700 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900"
+      download
+      href={href}
+      title="Tipps als XLS herunterladen"
+    >
+      <svg
+        aria-hidden="true"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <path d="M12 18v-6" />
+        <path d="m9 15 3 3 3-3" />
+      </svg>
+      <span>XLS</span>
+    </a>
+  );
 }
 
 function PotentialWinList({ items }: { items: UserPotentialWin[] }) {
@@ -188,7 +218,9 @@ function DistributionPanel({ groups }: { groups: MatchPredictionGroup[] }) {
           <div
             className={cn(
               "rounded-lg border p-3",
-              group.isImpossible
+              group.isNoTip
+                ? "border-zinc-200 bg-zinc-50 opacity-70"
+                : group.isImpossible
                 ? "border-zinc-200 bg-zinc-50 opacity-70"
                 : group.isFinalScore || group.isCurrentScore
                 ? "border-emerald-300 bg-emerald-50"
@@ -200,7 +232,9 @@ function DistributionPanel({ groups }: { groups: MatchPredictionGroup[] }) {
               <div
                 className={cn(
                   "text-2xl font-black",
-                  group.isImpossible
+                  group.isNoTip
+                    ? "text-zinc-500"
+                    : group.isImpossible
                     ? "text-zinc-400 line-through"
                     : "text-zinc-950",
                 )}
@@ -211,7 +245,9 @@ function DistributionPanel({ groups }: { groups: MatchPredictionGroup[] }) {
                 <div
                   className={cn(
                     "h-full rounded-full",
-                    group.isImpossible
+                    group.isNoTip
+                      ? "bg-zinc-300"
+                      : group.isImpossible
                       ? "bg-zinc-300"
                       : group.isFinalScore || group.isCurrentScore
                       ? "bg-emerald-700"
@@ -225,7 +261,7 @@ function DistributionPanel({ groups }: { groups: MatchPredictionGroup[] }) {
                   {group.count}x
                 </div>
                 <div className="text-[0.65rem] font-bold uppercase text-zinc-500">
-                  Tipps
+                  {group.isNoTip ? "Tippreihen" : "Tipps"}
                 </div>
               </div>
             </div>
@@ -233,12 +269,16 @@ function DistributionPanel({ groups }: { groups: MatchPredictionGroup[] }) {
               <span
                 className={cn(
                   "rounded-md px-2 py-1",
-                  group.isImpossible
+                  group.isNoTip
+                    ? "bg-zinc-100 text-zinc-500"
+                    : group.isImpossible
                     ? "bg-zinc-100 text-zinc-500"
                     : "bg-yellow-100 text-yellow-950",
                 )}
               >
-                {group.isImpossible
+                {group.isNoTip
+                  ? "Kein Tipp abgegeben"
+                  : group.isImpossible
                   ? "Nicht mehr möglich"
                   : `Möglicher Gewinn ${formatEuro(group.possibleWinEuros)}`}
               </span>
@@ -258,7 +298,9 @@ function DistributionPanel({ groups }: { groups: MatchPredictionGroup[] }) {
                 <span
                   className={cn(
                     "rounded-md px-2 py-1 text-xs font-bold",
-                    submission.isCurrentUser
+                    group.isNoTip
+                      ? "bg-zinc-100 text-zinc-400"
+                      : submission.isCurrentUser
                       ? currentUserChipClasses(group)
                       : group.isImpossible
                         ? "bg-zinc-100 text-zinc-400"
@@ -293,6 +335,7 @@ export default async function MatchIntegrityPage({
     (submission) => submission.isCurrentUser,
   );
   const canPredict = data.match.status === "open";
+  const tipsExportHref = `/match/${encodeURIComponent(id)}/tips`;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:py-8">
@@ -362,7 +405,12 @@ export default async function MatchIntegrityPage({
           ) : null}
         </Surface>
         <Surface className="p-4">
-          <div className="text-sm font-semibold text-zinc-500">Tippreihen</div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-sm font-semibold text-zinc-500">Tippreihen</div>
+            {data.revealAllPredictions ? (
+              <TipsExportLink href={tipsExportHref} />
+            ) : null}
+          </div>
           <div className="mt-2 text-3xl font-black text-zinc-950">
             {data.totalTippreihen}
           </div>
