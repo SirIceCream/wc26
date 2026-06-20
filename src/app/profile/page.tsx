@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { DataModeBanner } from "@/components/app/data-mode-banner";
-import { ProfileResults } from "@/components/app/profile-results";
+import {
+  ProfileResults,
+  type ProfileResultSort,
+} from "@/components/app/profile-results";
 import { ProfileSpecialPickReveal } from "@/components/app/profile-special-pick-reveal";
 import { ProfileSpecialPicks } from "@/components/app/profile-special-picks";
 import { Surface } from "@/components/app/primitives";
@@ -22,8 +25,17 @@ function formatGoalCount(value: number) {
   return `${value} ${value === 1 ? "Tor" : "Tore"}`;
 }
 
-export default async function ProfilePage() {
+function getResultSort(value: string | undefined): ProfileResultSort {
+  return value === "winnings" ? "winnings" : "newest";
+}
+
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ resultSort?: string }>;
+}) {
   const data = await getAppData();
+  const { resultSort } = await searchParams;
   const currentUserEntries = data.leaderboard.filter((row) => row.isCurrentUser);
   const wonEuros = currentUserEntries.reduce((total, row) => total + row.points, 0);
   const userDisplayName = data.userDisplayName ?? "Player";
@@ -137,7 +149,11 @@ export default async function ProfilePage() {
         <h2 className="text-sm font-bold uppercase text-zinc-500">
           Meine Ergebnisse
         </h2>
-        <ProfileResults results={data.profileResults} />
+        <ProfileResults
+          basePath="/profile"
+          results={data.profileResults}
+          sort={getResultSort(resultSort)}
+        />
       </section>
     </div>
   );
