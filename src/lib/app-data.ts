@@ -917,7 +917,10 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     .where(eq(leagues.slug, DEFAULT_LEAGUE_SLUG))
     .limit(1);
 
-  const dbMatches = await db.select().from(matches).orderBy(asc(matches.kickoffAt));
+  const dbMatches = await db
+    .select()
+    .from(matches)
+    .orderBy(asc(matches.kickoffAt), asc(matches.gameId));
   const dbPredictions = league
     ? await db
         .select()
@@ -1184,7 +1187,10 @@ export async function getPlayerProfileData(
 
     const [dbMatches, dbPredictions, dbSpecialPredictions, memberRows] =
       await Promise.all([
-        db.select().from(matches).orderBy(asc(matches.kickoffAt)),
+        db
+          .select()
+          .from(matches)
+          .orderBy(asc(matches.kickoffAt), asc(matches.gameId)),
         db
           .select()
           .from(predictions)
@@ -1366,7 +1372,10 @@ export async function getMatchIntegrityData(
 
     if (!currentMember) return null;
 
-    const dbMatches = await db.select().from(matches).orderBy(asc(matches.kickoffAt));
+    const dbMatches = await db
+      .select()
+      .from(matches)
+      .orderBy(asc(matches.kickoffAt), asc(matches.gameId));
     const match = dbMatches.find((candidate) => candidate.id === matchId);
 
     if (!match) return null;

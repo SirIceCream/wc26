@@ -181,7 +181,10 @@ export async function getAdminDashboardData() {
             .from(specialPredictions)
             .where(eq(specialPredictions.leagueId, league.id))
         : [],
-      db.select().from(matches).orderBy(asc(matches.kickoffAt)),
+      db
+        .select()
+        .from(matches)
+        .orderBy(asc(matches.kickoffAt), asc(matches.gameId)),
       db
         .select()
         .from(providerSyncLog)
