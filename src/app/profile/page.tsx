@@ -126,10 +126,10 @@ export default async function ProfilePage() {
           Alle Spezialtipps
         </h2>
         <ProfileSpecialPickReveal
-          currentGoalCount={data.tournamentProgress.totalGoals}
           deadlineAt={data.specialPickDeadlineAt}
           entries={data.specialPickRevealEntries}
           revealable={data.specialPicksRevealable}
+          tournamentProgress={data.tournamentProgress}
         />
       </section>
 
