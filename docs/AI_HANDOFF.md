@@ -90,7 +90,8 @@ Important: `0005` and `0006` together are intentional. Do not squash casually un
 ## User/Profile/League Model
 
 - Supabase Auth owns authentication.
-- Local development can bypass Supabase Auth with `LOCAL_TEST_USER_ENABLED=true`.
+- Do not use `LOCAL_TEST_USER_ENABLED=true` while any real/shared database is configured.
+- See `docs/agent.md`: never create additional users or test profiles.
 - Current local test user defaults:
   - id: `11111111-1111-4111-8111-111111111111`
   - email: `alex1@example.test`

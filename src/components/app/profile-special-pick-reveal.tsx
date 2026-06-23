@@ -209,7 +209,7 @@ function UserRowBadges({
   entries,
   muted = false,
 }: {
-  align?: "left" | "right";
+  align?: "left" | "responsive-right" | "right";
   entries: SpecialPickRevealEntry[];
   muted?: boolean;
 }) {
@@ -243,6 +243,7 @@ function UserRowBadges({
       className={cn(
         "mt-3 flex flex-wrap gap-2",
         align === "right" && "justify-end",
+        align === "responsive-right" && "sm:justify-end",
       )}
     >
       {[...users.values()].map((user) => {
@@ -418,10 +419,10 @@ function GoalsReveal({
             </div>
 
             {goalGroups.length ? (
-              <div className="relative grid gap-4 py-2">
+              <div className="relative grid gap-4 py-2 pl-24 sm:pl-0">
                 <div
                   aria-hidden="true"
-                  className="absolute bottom-12 left-1/2 top-12 w-3 -translate-x-1/2 overflow-hidden rounded-full bg-zinc-100"
+                  className="absolute bottom-12 left-10 top-12 w-3 -translate-x-1/2 overflow-hidden rounded-full bg-zinc-100 sm:left-1/2"
                 >
                   {projection ? (
                     <div
@@ -440,15 +441,19 @@ function GoalsReveal({
                 {projection ? (
                   <div
                     aria-hidden="true"
-                    className="absolute bottom-12 left-1/2 top-12 z-20 w-0"
+                    className="absolute bottom-12 left-10 top-12 z-20 w-0 sm:left-1/2"
                   >
                     <div
-                      className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
+                      className="absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2"
                       style={{ top: `${projection.percent}%` }}
                     >
-                      <div className="h-4 w-4 rounded-full border-2 border-white bg-yellow-500 shadow-md" />
-                      <div className="absolute right-4 top-1/2 max-w-[45vw] -translate-y-1/2 overflow-hidden text-ellipsis whitespace-nowrap rounded-md bg-zinc-950 px-2 py-1 text-[0.65rem] font-black uppercase text-white shadow-sm sm:static sm:mt-1 sm:max-w-none sm:translate-y-0">
-                        Hochrechnung {projection.value}
+                      <div className="h-full w-full rounded-full border-2 border-white bg-yellow-500 shadow-md" />
+                      <div className="absolute left-1/2 top-full mt-1 w-16 -translate-x-1/2 rounded-md bg-zinc-950 px-2 py-1 text-center text-[0.65rem] font-black uppercase leading-tight text-white shadow-sm sm:w-auto sm:whitespace-nowrap">
+                        <span className="block sm:inline">Hoch-</span>
+                        <span className="block sm:inline">Rechnung</span>
+                        <span className="block tabular-nums sm:inline">
+                          {projection.value}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -457,14 +462,14 @@ function GoalsReveal({
                 {currentPosition ? (
                   <div
                     aria-hidden="true"
-                    className="absolute bottom-12 left-1/2 top-12 z-30 w-0"
+                    className="absolute bottom-12 left-10 top-12 z-30 w-0 sm:left-1/2"
                   >
                     <div
-                      className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
+                      className="absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2"
                       style={{ top: `${currentPosition.percent}%` }}
                     >
-                      <div className="h-5 w-5 rounded-full border-2 border-white bg-emerald-800 shadow-md" />
-                      <div className="absolute left-4 top-1/2 max-w-[45vw] -translate-y-1/2 overflow-hidden text-ellipsis whitespace-nowrap rounded-md bg-emerald-900 px-2 py-1 text-[0.65rem] font-black uppercase text-white shadow-sm sm:static sm:mt-1 sm:max-w-none sm:translate-y-0">
+                      <div className="h-full w-full rounded-full border-2 border-white bg-emerald-800 shadow-md" />
+                      <div className="absolute left-1/2 top-full mt-1 w-20 -translate-x-1/2 rounded-md bg-emerald-900 px-2 py-1 text-center text-[0.65rem] font-black uppercase leading-tight text-white shadow-sm sm:w-auto sm:whitespace-nowrap">
                         Aktuell {currentPosition.value}
                       </div>
                     </div>
@@ -480,10 +485,10 @@ function GoalsReveal({
 
                   return (
                     <div
-                      className="relative z-10 grid min-h-24 grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)] items-start gap-2"
+                      className="relative z-10 grid min-h-24 grid-cols-1 items-start gap-2 sm:grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)]"
                       key={group.totalGoals}
                     >
-                      <div className={cn("min-w-0", !leftSide && "col-start-3")}>
+                      <div className={cn("min-w-0", !leftSide && "sm:col-start-3")}>
                         <div
                           className={cn(
                             "rounded-lg border p-3",
@@ -494,13 +499,13 @@ function GoalsReveal({
                               : isCurrentGoalCount
                                 ? "border-emerald-300 bg-emerald-50 shadow-sm"
                                 : "border-zinc-200 bg-white shadow-sm",
-                            leftSide ? "text-right" : "text-left",
+                            leftSide ? "sm:text-right" : "sm:text-left",
                           )}
                         >
                           <div
                             className={cn(
                               "flex flex-wrap items-center gap-2",
-                              leftSide ? "justify-end" : "justify-start",
+                              leftSide ? "sm:justify-end" : "sm:justify-start",
                             )}
                           >
                             <span
@@ -536,7 +541,7 @@ function GoalsReveal({
                             ) : null}
                           </div>
                           <UserRowBadges
-                            align={leftSide ? "right" : "left"}
+                            align={leftSide ? "responsive-right" : "left"}
                             entries={group.entries}
                             muted={isImpossible}
                           />
