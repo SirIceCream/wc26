@@ -68,13 +68,24 @@ export function LeaderboardMiniRow({
       </div>
       <Avatar name={avatarName} compact />
       <div className="min-w-0">
-        <PlayerNameLink
-          className={cn(
-            "block truncate text-sm text-zinc-950",
-            row.isCurrentUser ? "font-black" : "font-semibold",
-          )}
-          row={row}
-        />
+        <div className="flex min-w-0 items-baseline gap-1">
+          <PlayerNameLink
+            className={cn(
+              "min-w-0 truncate text-sm text-zinc-950",
+              row.isCurrentUser ? "font-black" : "font-semibold",
+            )}
+            row={row}
+          />
+          <span
+            aria-label={`${row.exact} richtige Tipps`}
+            className={cn(
+              "shrink-0 text-sm text-zinc-500",
+              row.isCurrentUser ? "font-bold" : "font-medium",
+            )}
+          >
+            ({row.exact})
+          </span>
+        </div>
         <div className="text-xs font-medium text-zinc-500">
           {row.entryLabel ?? "Tippreihe 1"}
         </div>

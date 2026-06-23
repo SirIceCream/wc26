@@ -15,7 +15,14 @@ export default async function LeaderboardPage() {
       <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
         <Podium rows={data.leaderboard} />
         <section className="space-y-3">
-          <SectionTitle title="Gesamte Rangliste" />
+          <SectionTitle
+            action={
+              <span className="max-w-40 text-right text-xs font-medium leading-tight text-zinc-500 sm:max-w-none sm:whitespace-nowrap">
+                *in Klammer Anzahl richtiger Tipps
+              </span>
+            }
+            title="Gesamte Rangliste"
+          />
           <LeaderboardList rows={data.leaderboard} />
         </section>
       </div>
