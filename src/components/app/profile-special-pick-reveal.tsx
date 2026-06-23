@@ -266,7 +266,7 @@ function GoalsReveal({
               className={cn(index < groups.length - 1 && "border-b border-zinc-100")}
               key={group.totalGoals ?? "no-tip"}
             >
-              <div className="grid gap-3 px-4 py-4 sm:grid-cols-[1fr_auto] sm:items-start">
+              <div className="px-4 py-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-3">
                     <div className="text-base font-black text-zinc-950">
@@ -279,14 +279,6 @@ function GoalsReveal({
                     ) : null}
                   </div>
                   <UserRowBadges entries={group.entries} />
-                </div>
-                <div className="rounded-lg bg-zinc-50 px-3 py-2 text-center">
-                  <div className="text-lg font-black text-zinc-950">
-                    {group.entries.length}
-                  </div>
-                  <div className="text-[0.65rem] font-black uppercase text-zinc-500">
-                    Tipps
-                  </div>
                 </div>
               </div>
             </div>

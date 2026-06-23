@@ -78,7 +78,7 @@ export function RouteLoadingIndicator() {
     <div
       aria-hidden="true"
       className={cn(
-        "pointer-events-none fixed inset-x-0 top-0 z-[80] h-0.5 overflow-hidden transition-opacity duration-150",
+        "pointer-events-none fixed inset-x-0 top-0 z-[80] h-1.5 overflow-hidden transition-opacity duration-150",
         state === "idle" ? "opacity-0" : "opacity-100",
       )}
     >

@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProfileResultRow } from "@/lib/app-data";
 import {
   getStageLabel,
@@ -6,6 +9,7 @@ import {
   getTeamShortLabel,
 } from "@/lib/tournament-data";
 import { cn } from "@/lib/utils";
+import { LoadingSpinner } from "./loading-spinner";
 import { StatusChip, Surface, TeamFlag } from "./primitives";
 
 function formatEuro(value: number) {
@@ -36,36 +40,19 @@ function predictionLabel(result: ProfileResultRow) {
 
 export type ProfileResultSort = "newest" | "winnings";
 
-function resultHref({
-  basePath,
-  sort,
-}: {
-  basePath: string;
-  sort: ProfileResultSort;
-}) {
-  const params = new URLSearchParams();
-
-  if (sort !== "newest") params.set("resultSort", sort);
-
-  const query = params.toString();
-
-  return query ? `${basePath}?${query}` : basePath;
-}
-
 export function ProfileResults({
-  basePath = "/profile",
   predictionLabelText = "Mein Tipp",
   results,
-  sort = "newest",
 }: {
-  basePath?: string;
   predictionLabelText?: string;
   results: ProfileResultRow[];
-  sort?: ProfileResultSort;
 }) {
+  const [sort, setSort] = useState<ProfileResultSort>("newest");
+  const [pendingSort, setPendingSort] = useState<ProfileResultSort | null>(null);
+  const timer = useRef<number | null>(null);
   const wonCount = results.filter((result) => result.payoutEuros > 0).length;
-  const visibleResults = [...results]
-    .sort((a, b) => {
+  const visibleResults = useMemo(
+    () => [...results].sort((a, b) => {
       const dateDiff =
         new Date(b.kickoffAt).getTime() - new Date(a.kickoffAt).getTime();
 
@@ -74,7 +61,31 @@ export function ProfileResults({
       }
 
       return dateDiff;
-    });
+    }),
+    [results, sort],
+  );
+
+  useEffect(
+    () => () => {
+      if (timer.current) {
+        window.clearTimeout(timer.current);
+      }
+    },
+    [],
+  );
+
+  function handleSort(nextSort: ProfileResultSort) {
+    if (timer.current) {
+      window.clearTimeout(timer.current);
+    }
+
+    setPendingSort(nextSort);
+    setSort(nextSort);
+    timer.current = window.setTimeout(() => {
+      setPendingSort(null);
+      timer.current = null;
+    }, 220);
+  }
 
   if (!results.length) {
     return (
@@ -90,30 +101,34 @@ export function ProfileResults({
     <Surface>
       <div className="flex flex-col gap-3 border-b border-zinc-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="inline-grid grid-cols-2 rounded-lg bg-zinc-100 p-1 text-xs font-black">
-          <Link
-            aria-current={sort === "newest" ? "true" : undefined}
+          <button
+            aria-pressed={sort === "newest"}
             className={cn(
-              "rounded-md px-3 py-2 transition",
+              "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-3 py-2 transition",
               sort === "newest"
                 ? "bg-white text-zinc-950 shadow-sm"
                 : "text-zinc-500 hover:text-zinc-950",
             )}
-            href={resultHref({ basePath, sort: "newest" })}
+            onClick={() => handleSort("newest")}
+            type="button"
           >
+            {pendingSort === "newest" ? <LoadingSpinner /> : null}
             Neueste zuerst
-          </Link>
-          <Link
-            aria-current={sort === "winnings" ? "true" : undefined}
+          </button>
+          <button
+            aria-pressed={sort === "winnings"}
             className={cn(
-              "rounded-md px-3 py-2 transition",
+              "inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-3 py-2 transition",
               sort === "winnings"
                 ? "bg-white text-zinc-950 shadow-sm"
                 : "text-zinc-500 hover:text-zinc-950",
             )}
-            href={resultHref({ basePath, sort: "winnings" })}
+            onClick={() => handleSort("winnings")}
+            type="button"
           >
+            {pendingSort === "winnings" ? <LoadingSpinner /> : null}
             Gewinn absteigend ({wonCount})
-          </Link>
+          </button>
         </div>
       </div>
       {visibleResults.length ? (

@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DataModeBanner } from "@/components/app/data-mode-banner";
-import {
-  ProfileResults,
-  type ProfileResultSort,
-} from "@/components/app/profile-results";
+import { ProfileResults } from "@/components/app/profile-results";
 import { ProfileSpecialPicks } from "@/components/app/profile-special-picks";
 import { Surface } from "@/components/app/primitives";
 import { getPlayerProfileData } from "@/lib/app-data";
@@ -25,19 +22,12 @@ function formatGoalCount(value: number) {
   return `${value} ${value === 1 ? "Tor" : "Tore"}`;
 }
 
-function getResultSort(value: string | undefined): ProfileResultSort {
-  return value === "winnings" ? "winnings" : "newest";
-}
-
 export default async function PlayerProfilePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ username: string }>;
-  searchParams: Promise<{ resultSort?: string }>;
 }) {
   const { username } = await params;
-  const { resultSort } = await searchParams;
   const data = await getPlayerProfileData(decodeURIComponent(username));
 
   if (!data) {
@@ -152,10 +142,8 @@ export default async function PlayerProfilePage({
           Ergebnisse
         </h2>
         <ProfileResults
-          basePath={`/players/${encodeURIComponent(data.username)}`}
           predictionLabelText="Tipp"
           results={data.profileResults}
-          sort={getResultSort(resultSort)}
         />
       </section>
     </div>

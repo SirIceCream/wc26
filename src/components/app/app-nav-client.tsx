@@ -26,17 +26,20 @@ function isActive(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
-function WhatsAppLink() {
+function WhatsAppLink({ compact = false }: { compact?: boolean }) {
   return (
     <a
       aria-label="Jack Bot auf WhatsApp schreiben"
-      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#25D366] px-3 text-sm font-black text-white shadow-sm transition hover:bg-[#1fb757] focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
+      className={cn(
+        "inline-flex h-10 items-center justify-center rounded-lg bg-[#25D366] text-sm font-black text-white shadow-sm transition hover:bg-[#1fb757] focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2",
+        compact ? "w-10" : "gap-2 px-3",
+      )}
       href={JACK_BOT_WHATSAPP_URL}
       rel="noreferrer"
       target="_blank"
       title="Jack Bot auf WhatsApp schreiben"
     >
-      <span>Message Bot</span>
+      {compact ? null : <span>Message Bot</span>}
       <svg
         aria-hidden="true"
         className="h-5 w-5 shrink-0"
@@ -55,6 +58,7 @@ export function AppNavClient({
   userEmail,
 }: AppNavClientProps) {
   const pathname = usePathname();
+  const isProfileRoute = isActive(pathname, "/profile");
 
   if (
     (!isAuthenticated && pathname === "/login") ||
@@ -92,12 +96,12 @@ export function AppNavClient({
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <WhatsAppLink />
+            <WhatsAppLink compact={isProfileRoute} />
             {isAuthenticated ? (
               <form
                 action={signOutAction}
                 className={cn(
-                  isActive(pathname, "/profile") ? "block" : "hidden",
+                  isProfileRoute ? "block" : "hidden",
                   "md:block",
                 )}
               >
