@@ -424,6 +424,10 @@ function mapMatch(
   const primaryPrediction = matchPredictions.find(
     (prediction) => prediction.predictionRow === 1,
   );
+  const liveMinute =
+    status === "live" && match.liveMinute !== null
+      ? `${match.liveMinute}${match.liveInjuryTime ? `+${match.liveInjuryTime}` : ""}'`
+      : undefined;
 
   return {
     id: match.id,
@@ -435,10 +439,7 @@ function mapMatch(
     status,
     venue: match.venue ?? undefined,
     deadline: status === "open" ? "Sperrt vor Anpfiff" : undefined,
-    minute:
-      status === "live" && match.liveMinute !== null
-        ? `${match.liveMinute}'`
-        : undefined,
+    minute: liveMinute,
     score:
       (status === "live" || status === "done") &&
       match.homeScore !== null &&

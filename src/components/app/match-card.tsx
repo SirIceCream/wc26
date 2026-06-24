@@ -77,13 +77,19 @@ export function MatchRow({
             )}
           >
             {match.score.home}
-            <span className="px-1 text-zinc-400">:</span>
+            <span
+              className={cn(
+                "px-1 text-zinc-400",
+                match.status === "live" && "text-red-700",
+              )}
+            >
+              :
+            </span>
             {match.score.away}
+            {match.status === "live" && match.minute ? (
+              <span className="ml-1 text-sm">({match.minute})</span>
+            ) : null}
           </div>
-        ) : null}
-
-        {match.status === "live" && match.minute ? (
-          <StatusChip kind="live">{match.minute}</StatusChip>
         ) : null}
 
         {showPrediction && !match.score && hasSubmittedPrediction(match) ? (
@@ -302,8 +308,16 @@ export function PredictionCard({
         <div className="flex min-w-[7.5rem] flex-col items-center gap-3">
           {match.score ? (
             <>
-              <div className="text-3xl font-black text-zinc-950">
+              <div
+                className={cn(
+                  "text-3xl font-black text-zinc-950",
+                  match.status === "live" && "text-red-700",
+                )}
+              >
                 {match.score.home}:{match.score.away}
+                {match.status === "live" && match.minute ? (
+                  <span className="ml-2 text-base">({match.minute})</span>
+                ) : null}
               </div>
               {match.prediction ? (
                 <div className="text-xs font-semibold text-zinc-500">

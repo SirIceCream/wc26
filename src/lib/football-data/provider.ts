@@ -51,6 +51,7 @@ export type FootballDataMatch = {
   utcDate: string;
   status: FootballDataStatus | string;
   minute?: number | null;
+  injuryTime?: number | null;
   homeTeam: FootballDataTeam;
   awayTeam: FootballDataTeam;
   score?: {
@@ -112,6 +113,7 @@ async function fetchFootballDataJson<T>(path: string): Promise<T> {
   const response = await fetch(`${footballDataBaseUrl()}${path}`, {
     headers: {
       Accept: "application/json",
+      "X-Api-Version": "v4.1",
       "X-Auth-Token": footballDataToken(),
     },
     next: { revalidate: 0 },
@@ -262,8 +264,13 @@ export function buildFootballDataMatchUpdate(
       typeof match.minute === "number" && Number.isFinite(match.minute)
         ? match.minute
         : null;
+    update.liveInjuryTime =
+      typeof match.injuryTime === "number" && Number.isFinite(match.injuryTime)
+        ? match.injuryTime
+        : null;
   } else if (appStatus) {
     update.liveMinute = null;
+    update.liveInjuryTime = null;
   }
 
   if (

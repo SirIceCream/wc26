@@ -48,9 +48,11 @@ function getOwnPredictionLabels(match: Match) {
 
 function FeaturedMatchCard({
   connected,
+  compact = false,
   match,
 }: {
   connected: boolean;
+  compact?: boolean;
   match: Match;
 }) {
   const isLive = match.status === "live";
@@ -82,11 +84,6 @@ function FeaturedMatchCard({
         >
           {isLive ? "Live-Spiel" : "Nächstes Spiel"}
         </span>
-        {match.minute ? (
-          <span className="rounded-md bg-red-100 px-2 py-1 text-xs font-black uppercase text-red-700">
-            {match.minute}
-          </span>
-        ) : null}
         {isJackpotMatch && match.pot ? (
           <span className="rounded-md border-2 border-yellow-500 bg-amber-400 px-2 py-1 text-xs font-black uppercase text-yellow-950 shadow-sm">
             Jackpot {formatEuro(match.pot.totalEuros)}
@@ -98,7 +95,12 @@ function FeaturedMatchCard({
         ) : null}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+      <div
+        className={cn(
+          "grid gap-5",
+          !compact && "lg:grid-cols-[1fr_auto_1fr] lg:items-center",
+        )}
+      >
         <div className="flex items-center gap-3">
           <TeamFlag code={match.home} size="lg" />
           <div className="min-w-0">
@@ -118,7 +120,16 @@ function FeaturedMatchCard({
               isLive ? "text-red-700" : "text-zinc-950",
             )}
           >
-            {match.score ? `${match.score.home}:${match.score.away}` : "vs"}
+            {match.score ? (
+              <>
+                {match.score.home}:{match.score.away}
+                {match.minute ? (
+                  <span className="ml-2 text-2xl">({match.minute})</span>
+                ) : null}
+              </>
+            ) : (
+              "vs"
+            )}
           </div>
           <div className="mt-2 text-xs font-black uppercase text-zinc-500">
             {getStageLabel(match.stage)} · {matchTime}
@@ -187,15 +198,24 @@ function FeaturedMatchCard({
 export default async function Home() {
   const data = await getAppData();
   const dashboardMatches = [...data.todayMatches, ...data.upcomingMatches];
-  const featuredMatch =
-    dashboardMatches.find((match) => match.status === "live") ??
-    dashboardMatches[0];
+  const liveMatches = dashboardMatches.filter((match) => match.status === "live");
+  const firstMatch = dashboardMatches[0];
+  const firstKickoffAt = firstMatch?.kickoffAt;
+  const nextKickoffMatches = firstKickoffAt
+    ? dashboardMatches.filter((match) => match.kickoffAt === firstKickoffAt)
+    : firstMatch
+      ? [firstMatch]
+      : [];
+  const featuredMatches = liveMatches.length ? liveMatches : nextKickoffMatches;
+  const featuredMatchIds = new Set(featuredMatches.map((match) => match.id));
   const nextListMatches = data.todayMatches.filter(
-    (match) => match.id !== featuredMatch?.id,
+    (match) => !featuredMatchIds.has(match.id),
   );
   const secondaryMatches = nextListMatches.length
     ? nextListMatches
-    : data.upcomingMatches.slice(0, 2);
+    : data.upcomingMatches
+        .filter((match) => !featuredMatchIds.has(match.id))
+        .slice(0, 2);
   const userDisplayName = data.userDisplayName ?? "Player";
   const firstName = userDisplayName.split(" ")[0] ?? userDisplayName;
   const missedPickLabel =
@@ -217,8 +237,22 @@ export default async function Home() {
               Servus {firstName}
             </h1>
           </div>
-          {featuredMatch ? (
-            <FeaturedMatchCard connected={data.connected} match={featuredMatch} />
+          {featuredMatches.length ? (
+            <div
+              className={cn(
+                "grid gap-4",
+                featuredMatches.length > 1 && "xl:grid-cols-2",
+              )}
+            >
+              {featuredMatches.map((match) => (
+                <FeaturedMatchCard
+                  compact={featuredMatches.length > 1}
+                  connected={data.connected}
+                  key={match.id}
+                  match={match}
+                />
+              ))}
+            </div>
           ) : (
             <Surface className="p-5">
               <p className="text-sm font-semibold text-zinc-500">

@@ -178,6 +178,7 @@ export const matches = pgTable(
     status: text("status").default("upcoming").notNull(),
     providerStatus: text("provider_status").default("scheduled").notNull(),
     liveMinute: integer("live_minute"),
+    liveInjuryTime: integer("live_injury_time"),
     homeScore: integer("home_score"),
     awayScore: integer("away_score"),
     homePenaltyScore: integer("home_penalty_score"),

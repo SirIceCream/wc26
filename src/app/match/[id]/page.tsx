@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DataModeBanner } from "@/components/app/data-mode-banner";
 import {
-  StatusChip,
   Surface,
   TeamFlag,
 } from "@/components/app/primitives";
@@ -353,9 +352,6 @@ export default async function MatchIntegrityPage({
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              {data.match.status === "live" && data.match.minute ? (
-                <StatusChip kind="live">{data.match.minute}</StatusChip>
-              ) : null}
               <span className="text-xs font-bold uppercase text-zinc-500">
                 {getStageLabel(data.match.stage)} · {data.match.time}
               </span>
@@ -377,10 +373,22 @@ export default async function MatchIntegrityPage({
                 {getTeamShortLabel(data.match.home)}
               </div>
             </div>
-            <div className="min-w-[5.5rem] text-center text-3xl font-black text-zinc-950">
-              {data.match.score
-                ? `${data.match.score.home}:${data.match.score.away}`
-                : "vs"}
+            <div
+              className={cn(
+                "min-w-[5.5rem] text-center text-3xl font-black text-zinc-950",
+                data.match.status === "live" && "text-red-700",
+              )}
+            >
+              {data.match.score ? (
+                <>
+                  {data.match.score.home}:{data.match.score.away}
+                  {data.match.minute ? (
+                    <span className="ml-2 text-base">({data.match.minute})</span>
+                  ) : null}
+                </>
+              ) : (
+                "vs"
+              )}
             </div>
             <div className="flex min-w-0 flex-col items-center gap-2 text-center">
               <TeamFlag code={data.match.away} size="lg" />

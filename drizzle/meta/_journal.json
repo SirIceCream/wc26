@@ -92,6 +92,13 @@
       "when": 1781791031802,
       "tag": "0012_add_changelog_acknowledgements",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1782320223352,
+      "tag": "0013_add_live_injury_time",
+      "breakpoints": true
     }
   ]
 }
