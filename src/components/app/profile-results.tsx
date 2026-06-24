@@ -55,12 +55,19 @@ export function ProfileResults({
     () => [...results].sort((a, b) => {
       const dateDiff =
         new Date(b.kickoffAt).getTime() - new Date(a.kickoffAt).getTime();
+      const gameIdDiff = (b.gameId ?? 0) - (a.gameId ?? 0);
+      const predictionRowDiff = a.predictionRow - b.predictionRow;
 
       if (sort === "winnings") {
-        return b.payoutEuros - a.payoutEuros || dateDiff;
+        return (
+          b.payoutEuros - a.payoutEuros ||
+          dateDiff ||
+          gameIdDiff ||
+          predictionRowDiff
+        );
       }
 
-      return dateDiff;
+      return dateDiff || gameIdDiff || predictionRowDiff;
     }),
     [results, sort],
   );

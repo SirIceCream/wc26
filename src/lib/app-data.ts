@@ -84,6 +84,7 @@ export type SpecialPickRevealEntry = {
 export type ProfileResultRow = {
   id: string;
   matchId: string;
+  gameId: number | null;
   kickoffAt: string;
   time: string;
   stage: string;
@@ -634,6 +635,7 @@ function buildProfileResults({
       return {
         id: `${match.id}-${predictionRow}`,
         matchId: match.id,
+        gameId: match.gameId,
         kickoffAt: match.kickoffAt.toISOString(),
         time: matchTime.compact,
         stage: match.groupName ?? match.stage,
