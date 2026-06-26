@@ -25,7 +25,7 @@ export default async function PredictPage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase text-emerald-800">
-            Gruppenphase
+            Spieltipps
           </p>
           <h1 className="mt-2 text-3xl font-black text-zinc-950">
             Tipps abgeben
