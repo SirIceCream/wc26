@@ -21,7 +21,7 @@ const GROUP_PHASE: MatchPhase = {
 };
 
 const KNOCKOUT_PHASES: MatchPhase[] = [
-  { key: "round-of-32", label: "Top 32", order: 1 },
+  { key: "round-of-32", label: "Top 16", order: 1 },
   { key: "round-of-16", label: "Top 16", order: 2 },
   { key: "quarter-finals", label: "Top 8", order: 3 },
   { key: "semi-finals", label: "Top 4", order: 4 },

@@ -51,7 +51,6 @@ export function TournamentProgressCard({
         {progress.stages.map((stage) => {
           const fill = stage.total > 0 ? stage.completed / stage.total : 0;
           const active = fill > 0 && fill < 1;
-          const done = fill >= 1;
 
           return (
             <div
@@ -63,15 +62,12 @@ export function TournamentProgressCard({
                 className={cn(
                   "relative h-2 overflow-hidden rounded-sm bg-zinc-100",
                   active && "ring-1 ring-emerald-800",
-                  done && "bg-emerald-800",
                 )}
               >
-                {!done ? (
-                  <div
-                    className="absolute inset-y-0 left-0 bg-emerald-800"
-                    style={{ width: `${fill * 100}%` }}
-                  />
-                ) : null}
+                <div
+                  className="absolute inset-y-0 left-0 bg-emerald-800"
+                  style={{ width: `${fill * 100}%` }}
+                />
               </div>
               <div
                 className={cn(
