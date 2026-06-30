@@ -43,6 +43,7 @@ type UserContext = {
 export type AppData = {
   activeChangelog: ActiveChangelog | null;
   connected: boolean;
+  eliminatedChampionTeamCodes: string[];
   hasAdditionalTippreihe: boolean;
   leagueId: string | null;
   leaderboard: LeaderboardRow[];
@@ -147,6 +148,7 @@ export type MatchIntegrityData = {
 export type PlayerProfileData = {
   connected: boolean;
   displayName: string;
+  eliminatedChampionTeamCodes: string[];
   isCurrentUser: boolean;
   leaderboardEntries: LeaderboardRow[];
   leagueId: string | null;
@@ -216,6 +218,45 @@ function countTournamentGoals(matchRows: (typeof matches.$inferSelect)[]) {
   }, 0);
 }
 
+function getKnockoutLoserTeamCode(match: typeof matches.$inferSelect) {
+  if (
+    match.groupName !== null ||
+    match.stage === "First Stage" ||
+    match.stage === "Play-off for third place" ||
+    match.status !== "done" ||
+    !match.homeTeamCode ||
+    !match.awayTeamCode ||
+    match.homeScore === null ||
+    match.awayScore === null
+  ) {
+    return null;
+  }
+
+  if (match.homeScore > match.awayScore) return match.awayTeamCode;
+  if (match.awayScore > match.homeScore) return match.homeTeamCode;
+
+  if (match.homePenaltyScore === null || match.awayPenaltyScore === null) {
+    return null;
+  }
+
+  if (match.homePenaltyScore > match.awayPenaltyScore) return match.awayTeamCode;
+  if (match.awayPenaltyScore > match.homePenaltyScore) return match.homeTeamCode;
+
+  return null;
+}
+
+function buildEliminatedChampionTeamCodes(
+  matchRows: (typeof matches.$inferSelect)[],
+) {
+  return [
+    ...new Set(
+      matchRows
+        .map(getKnockoutLoserTeamCode)
+        .filter((code): code is string => Boolean(code)),
+    ),
+  ];
+}
+
 function seedData(
   userEmail: string | null = null,
   userDisplayName = "Alex 1",
@@ -223,6 +264,7 @@ function seedData(
   return {
     activeChangelog: null,
     connected: false,
+    eliminatedChampionTeamCodes: [],
     hasAdditionalTippreihe: seedPredictionEntries.some(
       (entry) => entry.isAdditional,
     ),
@@ -1116,6 +1158,7 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
   return {
     activeChangelog,
     connected: true,
+    eliminatedChampionTeamCodes: buildEliminatedChampionTeamCodes(dbMatches),
     hasAdditionalTippreihe: currentUserHasTwoRows,
     leagueId: league?.id ?? null,
     leaderboard: leaderboardRows,
@@ -1294,6 +1337,7 @@ export async function getPlayerProfileData(
     return {
       connected: true,
       displayName: targetMember.displayName,
+      eliminatedChampionTeamCodes: buildEliminatedChampionTeamCodes(dbMatches),
       isCurrentUser: targetMember.userId === context.profileId,
       leaderboardEntries,
       leagueId: league.id,

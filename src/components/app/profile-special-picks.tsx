@@ -66,6 +66,7 @@ function formatGoalCount(value: number) {
 export function ProfileSpecialPicks({
   canEdit,
   currentGoalCount,
+  eliminatedChampionTeamCodes = [],
   leagueId,
   predictionEntries,
   predictionsByRow,
@@ -73,6 +74,7 @@ export function ProfileSpecialPicks({
 }: {
   canEdit: boolean;
   currentGoalCount: number;
+  eliminatedChampionTeamCodes?: string[];
   leagueId: string | null;
   predictionEntries: PredictionEntry[];
   predictionsByRow: SpecialPredictionsByRow;
@@ -81,6 +83,7 @@ export function ProfileSpecialPicks({
   const [rows, setRows] = useState(() =>
     buildInitialState(predictionEntries, predictionsByRow),
   );
+  const eliminatedTeams = new Set(eliminatedChampionTeamCodes);
   const [savingRows, setSavingRows] = useState<Record<number, boolean>>({});
   const [errorRows, setErrorRows] = useState<Record<number, boolean>>({});
 
@@ -147,10 +150,16 @@ export function ProfileSpecialPicks({
           const row = rows[entry.predictionRow];
           const championTeamCode = row.savedChampionTeamCode;
           const totalGoals = row.savedTotalGoals;
+          const championEliminated = championTeamCode
+            ? eliminatedTeams.has(championTeamCode)
+            : false;
 
           return (
             <div
-              className="grid gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-3 shadow-sm sm:grid-cols-[7rem_1fr_auto] sm:items-center"
+              className={cn(
+                "grid gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-3 shadow-sm sm:grid-cols-[7rem_1fr_auto] sm:items-center",
+                championEliminated && "bg-zinc-50",
+              )}
               key={entry.predictionRow}
             >
               <div className="text-xs font-black uppercase text-zinc-500">
@@ -159,10 +168,23 @@ export function ProfileSpecialPicks({
               <div className="flex min-w-0 items-center gap-2">
                 {championTeamCode ? (
                   <>
-                    <TeamFlag code={championTeamCode} size="sm" />
-                    <span className="truncate text-sm font-black text-zinc-950">
+                    <span className={cn(championEliminated && "grayscale opacity-45")}>
+                      <TeamFlag code={championTeamCode} size="sm" />
+                    </span>
+                    <span
+                      className={cn(
+                        "truncate text-sm font-black text-zinc-950",
+                        championEliminated &&
+                          "text-zinc-400 line-through decoration-2",
+                      )}
+                    >
                       {getTeamLabel(championTeamCode)}
                     </span>
+                    {championEliminated ? (
+                      <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-black text-zinc-500">
+                        Ausgeschieden
+                      </span>
+                    ) : null}
                   </>
                 ) : (
                   <span className="text-sm font-semibold text-zinc-500">
@@ -189,6 +211,9 @@ export function ProfileSpecialPicks({
           row.totalGoals !== row.savedTotalGoals;
         const saving = Boolean(savingRows[entry.predictionRow]);
         const error = Boolean(errorRows[entry.predictionRow]);
+        const championEliminated = row.savedChampionTeamCode
+          ? eliminatedTeams.has(row.savedChampionTeamCode)
+          : false;
 
         return (
           <form
@@ -280,8 +305,22 @@ export function ProfileSpecialPicks({
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-zinc-500">
                 {row.savedChampionTeamCode ? (
                   <>
-                    <TeamFlag code={row.savedChampionTeamCode} size="sm" />
-                    <span>{getTeamLabel(row.savedChampionTeamCode)}</span>
+                    <span className={cn(championEliminated && "grayscale opacity-45")}>
+                      <TeamFlag code={row.savedChampionTeamCode} size="sm" />
+                    </span>
+                    <span
+                      className={cn(
+                        championEliminated &&
+                          "text-zinc-400 line-through decoration-2",
+                      )}
+                    >
+                      {getTeamLabel(row.savedChampionTeamCode)}
+                    </span>
+                    {championEliminated ? (
+                      <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-black text-zinc-500">
+                        Ausgeschieden
+                      </span>
+                    ) : null}
                   </>
                 ) : null}
                 {row.savedTotalGoals ? <span>{row.savedTotalGoals} Tore</span> : null}

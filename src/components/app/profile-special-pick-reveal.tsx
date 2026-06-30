@@ -273,8 +273,15 @@ function UserRowBadges({
   );
 }
 
-function ChampionReveal({ entries }: { entries: SpecialPickRevealEntry[] }) {
+function ChampionReveal({
+  eliminatedChampionTeamCodes,
+  entries,
+}: {
+  eliminatedChampionTeamCodes: string[];
+  entries: SpecialPickRevealEntry[];
+}) {
   const groups = buildChampionGroups(entries);
+  const eliminatedTeams = new Set(eliminatedChampionTeamCodes);
 
   return (
     <Surface>
@@ -294,37 +301,64 @@ function ChampionReveal({ entries }: { entries: SpecialPickRevealEntry[] }) {
         </summary>
 
         <div className="border-t border-zinc-100">
-          {groups.map((group, index) => (
-            <div
-              className={cn(
-                index < groups.length - 1 && "border-b border-zinc-100",
-              )}
-              key={group.championTeamCode ?? "no-tip"}
-            >
+          {groups.map((group, index) => {
+            const eliminated = group.championTeamCode
+              ? eliminatedTeams.has(group.championTeamCode)
+              : false;
+
+            return (
+              <div
+                className={cn(
+                  index < groups.length - 1 && "border-b border-zinc-100",
+                )}
+                key={group.championTeamCode ?? "no-tip"}
+              >
               <div
                 className={cn(
                   "grid gap-3 px-4 py-4 sm:grid-cols-[1fr_auto] sm:items-start",
+                  eliminated && "bg-zinc-50",
                   hasCurrentUserEntry(group.entries) && "bg-emerald-50",
                 )}
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-3">
                     {group.championTeamCode ? (
-                      <TeamFlag code={group.championTeamCode} size="sm" />
+                      <span className={cn(eliminated && "grayscale opacity-45")}>
+                        <TeamFlag code={group.championTeamCode} size="sm" />
+                      </span>
                     ) : null}
-                    <div className="text-base font-black text-zinc-950">
+                    <div
+                      className={cn(
+                        "text-base font-black text-zinc-950",
+                        eliminated && "text-zinc-400 line-through decoration-2",
+                      )}
+                    >
                       {group.label}
                     </div>
-                    {typeof group.possibleWinEuros === "number" ? (
+                    {eliminated ? (
+                      <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-black text-zinc-500">
+                        Ausgeschieden
+                      </span>
+                    ) : typeof group.possibleWinEuros === "number" ? (
                       <span className="rounded-md bg-yellow-100 px-2 py-1 text-xs font-black text-yellow-950">
                         {formatEuro(group.possibleWinEuros)}
                       </span>
                     ) : null}
                   </div>
-                  <UserRowBadges entries={group.entries} />
+                  <UserRowBadges entries={group.entries} muted={eliminated} />
                 </div>
-                <div className="rounded-lg bg-zinc-50 px-3 py-2 text-center">
-                  <div className="text-lg font-black text-zinc-950">
+                <div
+                  className={cn(
+                    "rounded-lg bg-zinc-50 px-3 py-2 text-center",
+                    eliminated && "bg-zinc-100",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "text-lg font-black text-zinc-950",
+                      eliminated && "text-zinc-500",
+                    )}
+                  >
                     {group.entries.length}
                   </div>
                   <div className="text-[0.65rem] font-black uppercase text-zinc-500">
@@ -333,7 +367,8 @@ function ChampionReveal({ entries }: { entries: SpecialPickRevealEntry[] }) {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </details>
     </Surface>
@@ -570,11 +605,13 @@ function GoalsReveal({
 
 export function ProfileSpecialPickReveal({
   deadlineAt,
+  eliminatedChampionTeamCodes,
   entries,
   revealable,
   tournamentProgress,
 }: {
   deadlineAt: string;
+  eliminatedChampionTeamCodes: string[];
   entries: SpecialPickRevealEntry[];
   revealable: boolean;
   tournamentProgress: TournamentProgress;
@@ -606,7 +643,10 @@ export function ProfileSpecialPickReveal({
 
   return (
     <div className="grid gap-3">
-      <ChampionReveal entries={entries} />
+      <ChampionReveal
+        eliminatedChampionTeamCodes={eliminatedChampionTeamCodes}
+        entries={entries}
+      />
       <GoalsReveal entries={entries} progress={tournamentProgress} />
     </div>
   );
