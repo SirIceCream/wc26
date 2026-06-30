@@ -114,6 +114,7 @@ export default async function ProfilePage() {
         <ProfileSpecialPicks
           canEdit={canEditSpecialPicks}
           currentGoalCount={data.tournamentProgress.totalGoals}
+          eliminatedChampionTeamCodes={data.eliminatedChampionTeamCodes}
           leagueId={data.leagueId}
           predictionEntries={data.predictionEntries}
           predictionsByRow={data.specialPredictions}
@@ -127,6 +128,7 @@ export default async function ProfilePage() {
         </h2>
         <ProfileSpecialPickReveal
           deadlineAt={data.specialPickDeadlineAt}
+          eliminatedChampionTeamCodes={data.eliminatedChampionTeamCodes}
           entries={data.specialPickRevealEntries}
           revealable={data.specialPicksRevealable}
           tournamentProgress={data.tournamentProgress}

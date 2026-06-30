@@ -122,6 +122,7 @@ export default async function PlayerProfilePage({
           <ProfileSpecialPicks
             canEdit={false}
             currentGoalCount={data.tournamentProgress.totalGoals}
+            eliminatedChampionTeamCodes={data.eliminatedChampionTeamCodes}
             key={data.username}
             leagueId={data.leagueId}
             predictionEntries={data.predictionEntries}
