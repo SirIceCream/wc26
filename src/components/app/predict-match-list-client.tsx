@@ -103,13 +103,18 @@ function getMatchPhase(match: Match): MatchPhase {
   return GROUP_PHASE;
 }
 
-function getCurrentKnockoutPhase(matches: Match[]) {
-  const knockoutPhases = matches
+function getAvailableKnockoutPhases(matches: Match[]) {
+  const phases = matches
     .map(getMatchPhase)
     .filter((phase) => phase.key !== GROUP_PHASE.key)
     .sort((a, b) => a.order - b.order);
+  const uniquePhases = new Map<string, MatchPhase>();
 
-  return knockoutPhases[0] ?? null;
+  for (const phase of phases) {
+    uniquePhases.set(phase.key, phase);
+  }
+
+  return [...uniquePhases.values()];
 }
 
 function buildSections(matches: Match[]) {
@@ -149,17 +154,15 @@ export function PredictMatchListClient({
   const [savedRowsByMatch, setSavedRowsByMatch] = useState(() =>
     buildSavedRows(matches, entries),
   );
-  const currentKnockoutPhase = useMemo(
-    () => getCurrentKnockoutPhase(matches),
+  const availableKnockoutPhases = useMemo(
+    () => getAvailableKnockoutPhases(matches),
     [matches],
   );
-  const [onlyCurrentKnockoutPhase, setOnlyCurrentKnockoutPhase] =
-    useState(false);
+  const [selectedPhaseKey, setSelectedPhaseKey] = useState<string | null>(null);
   const visibleMatches = matches.filter((match) => {
     if (
-      onlyCurrentKnockoutPhase &&
-      currentKnockoutPhase &&
-      getMatchPhase(match).key !== currentKnockoutPhase.key
+      selectedPhaseKey &&
+      getMatchPhase(match).key !== selectedPhaseKey
     ) {
       return false;
     }
@@ -196,18 +199,36 @@ export function PredictMatchListClient({
         </h2>
         {matches.length ? (
           <div className="flex flex-wrap gap-2">
-            {currentKnockoutPhase ? (
-              <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-bold text-zinc-800 shadow-sm transition hover:border-emerald-300">
-                <input
-                  checked={onlyCurrentKnockoutPhase}
-                  className="h-4 w-4 accent-emerald-800"
-                  onChange={(event) =>
-                    setOnlyCurrentKnockoutPhase(event.target.checked)
-                  }
-                  type="checkbox"
-                />
-                <span>Nur {currentKnockoutPhase.label}</span>
-              </label>
+            {availableKnockoutPhases.length ? (
+              <div className="flex flex-wrap gap-1 rounded-lg border border-zinc-200 bg-white p-1 shadow-sm">
+                <button
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-bold transition",
+                    selectedPhaseKey === null
+                      ? "bg-emerald-800 text-white"
+                      : "text-zinc-700 hover:bg-zinc-100",
+                  )}
+                  onClick={() => setSelectedPhaseKey(null)}
+                  type="button"
+                >
+                  Alle
+                </button>
+                {availableKnockoutPhases.map((phase) => (
+                  <button
+                    className={cn(
+                      "rounded-md px-3 py-1.5 text-sm font-bold transition",
+                      selectedPhaseKey === phase.key
+                        ? "bg-emerald-800 text-white"
+                        : "text-zinc-700 hover:bg-zinc-100",
+                    )}
+                    key={phase.key}
+                    onClick={() => setSelectedPhaseKey(phase.key)}
+                    type="button"
+                  >
+                    {phase.label}
+                  </button>
+                ))}
+              </div>
             ) : null}
             <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-bold text-zinc-800 shadow-sm transition hover:border-emerald-300">
               <input
