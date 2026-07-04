@@ -29,6 +29,9 @@ export function TournamentProgressCard({
   const percent = Math.round(
     (progress.completedMatches / progress.totalMatches) * 100,
   );
+  const activeStageIndex = progress.stages.findIndex(
+    (stage) => stage.completed < stage.total,
+  );
 
   return (
     <Surface className="p-4">
@@ -48,9 +51,9 @@ export function TournamentProgressCard({
       </div>
 
       <div className="mb-4 flex gap-1">
-        {progress.stages.map((stage) => {
+        {progress.stages.map((stage, index) => {
           const fill = stage.total > 0 ? stage.completed / stage.total : 0;
-          const active = fill > 0 && fill < 1;
+          const active = index === activeStageIndex;
 
           return (
             <div
@@ -61,7 +64,7 @@ export function TournamentProgressCard({
               <div
                 className={cn(
                   "relative h-2 overflow-hidden rounded-sm bg-zinc-100",
-                  active && "ring-1 ring-emerald-800",
+                  active && "ring-1 ring-emerald-800 ring-offset-1",
                 )}
               >
                 <div
@@ -72,7 +75,7 @@ export function TournamentProgressCard({
               <div
                 className={cn(
                   "mt-1 truncate text-center text-[0.62rem] font-black uppercase",
-                  fill > 0 ? "text-emerald-800" : "text-zinc-400",
+                  fill > 0 || active ? "text-emerald-800" : "text-zinc-400",
                 )}
               >
                 {stage.label}
