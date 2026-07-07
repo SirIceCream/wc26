@@ -111,3 +111,46 @@ curl -i \
 
 During active match windows, inspect `provider_sync_log` in the database to
 confirm successful sync runs and provider errors.
+
+## Known Edge Case: Short Postponements
+
+Observed on July 6, 2026: Mexico vs England was delayed by about one hour. The
+cron route kept running successfully every minute, but football-data still
+reported the match as `SCHEDULED` with no score. Because the local sync only
+polls mapped matches in a limited active window around the stored kickoff time,
+the match later fell out of the candidate set and recent sync logs showed:
+
+```json
+{
+  "candidateCount": 0,
+  "fetchedCount": 0,
+  "updatedCount": 0,
+  "status": "finished"
+}
+```
+
+This means the cron job was healthy; it was no longer polling the delayed match.
+
+If this happens again:
+
+- Check the match row in `matches` for stale `status`, `provider_status`,
+  `kickoff_at`, and scores.
+- Check `provider_sync_log.payload` for `candidateCount`.
+- Check `match_provider_mappings.provider_payload` for the stale provider
+  status.
+- Verify the official score against FIFA before correcting production data.
+- Apply a targeted transaction for the single affected `game_id`; do not run a
+  broad/manual update across unrelated matches.
+
+Manual correction used for the Mexico vs England incident:
+
+- `game_id = 92`
+- `MEX 2 - 3 ENG`
+- `status = done`
+- `provider_status = FINISHED`
+- `result_type = REGULAR`
+- official kickoff corrected to `2026-07-06T01:00:00Z`
+
+Future code improvement: keep delayed or scheduled mapped matches in the active
+polling window longer when `locked_at <= now()` but the provider still reports
+`SCHEDULED`/`TIMED`, or use FIFA as a fallback for final scores.
