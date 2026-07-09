@@ -315,7 +315,7 @@ function ChampionReveal({
               >
               <div
                 className={cn(
-                  "grid gap-3 px-4 py-4 sm:grid-cols-[1fr_auto] sm:items-start",
+                  "px-4 py-4",
                   eliminated && "bg-zinc-50",
                   hasCurrentUserEntry(group.entries) && "bg-emerald-50",
                 )}
@@ -347,24 +347,7 @@ function ChampionReveal({
                   </div>
                   <UserRowBadges entries={group.entries} muted={eliminated} />
                 </div>
-                <div
-                  className={cn(
-                    "rounded-lg bg-zinc-50 px-3 py-2 text-center",
-                    eliminated && "bg-zinc-100",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "text-lg font-black text-zinc-950",
-                      eliminated && "text-zinc-500",
-                    )}
-                  >
-                    {group.entries.length}
-                  </div>
-                  <div className="text-[0.65rem] font-black uppercase text-zinc-500">
-                    Tipps
-                  </div>
-                </div>
+
               </div>
             </div>
             );
