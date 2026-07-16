@@ -2,6 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb, isDatabaseConfigured } from "@/db";
 import {
+  finalSettlementAwards,
   leagueMembers,
   leagues,
   matches,
@@ -44,6 +45,7 @@ export type AppData = {
   activeChangelog: ActiveChangelog | null;
   connected: boolean;
   eliminatedChampionTeamCodes: string[];
+  finalSummary: TournamentFinalSummary | null;
   hasAdditionalTippreihe: boolean;
   leagueId: string | null;
   leaderboard: LeaderboardRow[];
@@ -61,6 +63,26 @@ export type AppData = {
   upcomingMatches: Match[];
   userDisplayName: string | null;
   userEmail: string | null;
+};
+
+export type FinalAwardKind = "champion" | "total_goals" | "lucky_loser";
+
+export type TournamentFinalAward = {
+  amountEuros: number;
+  awardType: FinalAwardKind;
+  correctTipBonus: number;
+  entryLabel: string;
+  entryName: string;
+  ownerName: string;
+  predictionRow: number;
+  userId: string;
+};
+
+export type TournamentFinalSummary = {
+  awards: TournamentFinalAward[];
+  isComplete: boolean;
+  leaderboardWinner: LeaderboardRow | null;
+  totalGoals: number;
 };
 
 export type SpecialPrediction = {
@@ -265,6 +287,7 @@ function seedData(
     activeChangelog: null,
     connected: false,
     eliminatedChampionTeamCodes: [],
+    finalSummary: null,
     hasAdditionalTippreihe: seedPredictionEntries.some(
       (entry) => entry.isAdditional,
     ),
@@ -515,6 +538,7 @@ function floorToCents(value: number) {
 
 type DbMatch = typeof matches.$inferSelect;
 type DbPrediction = typeof predictions.$inferSelect;
+type DbFinalSettlementAward = typeof finalSettlementAwards.$inferSelect;
 type DbSpecialPrediction = typeof specialPredictions.$inferSelect;
 type LeagueMemberRead = {
   userId: string;
@@ -748,6 +772,53 @@ function buildSpecialPredictionsByRowForUser(
   ) as SpecialPredictionsByRow;
 }
 
+function buildFinalAwards(
+  awardRows: DbFinalSettlementAward[],
+  memberRows: LeagueMemberRead[],
+): TournamentFinalAward[] {
+  const memberByUserId = new Map(
+    memberRows.map((member) => [member.userId, member]),
+  );
+
+  return awardRows
+    .map((award) => {
+      const member = memberByUserId.get(award.userId);
+      const predictionRow = award.predictionRow;
+      const ownerName = member?.displayName ?? "Unbekannt";
+
+      return {
+        amountEuros: award.amountCents / 100,
+        awardType: award.awardType as FinalAwardKind,
+        correctTipBonus: award.correctTipBonus,
+        entryLabel: `Tippreihe ${predictionRow}`,
+        entryName: member ? getEntryName(member, predictionRow) : ownerName,
+        ownerName,
+        predictionRow,
+        userId: award.userId,
+      };
+    })
+    .sort(
+      (a, b) =>
+        a.awardType.localeCompare(b.awardType, "de-AT") ||
+        a.ownerName.localeCompare(b.ownerName, "de-AT") ||
+        a.predictionRow - b.predictionRow,
+    );
+}
+
+function sumFinalAwardsByEntry(
+  awardRows: DbFinalSettlementAward[],
+  field: "amountCents" | "correctTipBonus",
+) {
+  const totals = new Map<string, number>();
+
+  for (const award of awardRows) {
+    const key = predictionEntryKey(award.userId, award.predictionRow);
+    totals.set(key, (totals.get(key) ?? 0) + award[field]);
+  }
+
+  return totals;
+}
+
 function countMissedPredictions({
   matches,
   predictionEntries,
@@ -978,6 +1049,12 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
         .from(specialPredictions)
         .where(eq(specialPredictions.leagueId, league.id))
     : [];
+  const dbFinalAwards = league
+    ? await db
+        .select()
+        .from(finalSettlementAwards)
+        .where(eq(finalSettlementAwards.leagueId, league.id))
+    : [];
 
   if (dbMatches.length === 0) {
     return null;
@@ -1017,6 +1094,14 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
 
   const { potByMatchId, payoutByMatchEntry, winningsByEntry } =
     buildJackpotState(dbMatches, dbPredictions, memberRows);
+  const finalAwardCentsByEntry = sumFinalAwardsByEntry(
+    dbFinalAwards,
+    "amountCents",
+  );
+  const finalCorrectTipBonusByEntry = sumFinalAwardsByEntry(
+    dbFinalAwards,
+    "correctTipBonus",
+  );
 
   const mapDbMatch = (match: typeof matches.$inferSelect) =>
     mapMatch(
@@ -1031,6 +1116,8 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
       (match.homeScore !== null && match.awayScore !== null),
   ).length;
   const tournamentGoalCount = countTournamentGoals(dbMatches);
+  const tournamentComplete =
+    dbMatches.length > 0 && completedMatchCount === dbMatches.length;
 
   const leaderboardRows = memberRows
     .flatMap((member) => {
@@ -1049,10 +1136,13 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
             ? isExactPrediction(match, prediction)
             : false;
         }).length;
+        const entryKey = predictionEntryKey(member.userId, predictionRow);
         const winningsEuros =
-          winningsByEntry.get(predictionEntryKey(member.userId, predictionRow)) ??
-          0;
+          (winningsByEntry.get(entryKey) ?? 0) +
+          (finalAwardCentsByEntry.get(entryKey) ?? 0) / 100;
         const entryName = getEntryName(member, predictionRow);
+        const finalCorrectTipBonus =
+          finalCorrectTipBonusByEntry.get(entryKey) ?? 0;
 
         return {
           rank: 0,
@@ -1066,7 +1156,7 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
           isAdditionalEntry: predictionRow === 2,
           points: winningsEuros,
           winningsEuros,
-          exact,
+          exact: exact + finalCorrectTipBonus,
           total: memberPredictions.length,
           isCurrentUser: member.userId === context.profileId,
         };
@@ -1159,6 +1249,14 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
     activeChangelog,
     connected: true,
     eliminatedChampionTeamCodes: buildEliminatedChampionTeamCodes(dbMatches),
+    finalSummary: tournamentComplete
+      ? {
+          awards: buildFinalAwards(dbFinalAwards, memberRows),
+          isComplete: true,
+          leaderboardWinner: leaderboardRows[0] ?? null,
+          totalGoals: tournamentGoalCount,
+        }
+      : null,
     hasAdditionalTippreihe: currentUserHasTwoRows,
     leagueId: league?.id ?? null,
     leaderboard: leaderboardRows,
@@ -1231,7 +1329,13 @@ export async function getPlayerProfileData(
 
     if (!league) return null;
 
-    const [dbMatches, dbPredictions, dbSpecialPredictions, memberRows] =
+    const [
+      dbMatches,
+      dbPredictions,
+      dbSpecialPredictions,
+      dbFinalAwards,
+      memberRows,
+    ] =
       await Promise.all([
         db
           .select()
@@ -1245,6 +1349,10 @@ export async function getPlayerProfileData(
           .select()
           .from(specialPredictions)
           .where(eq(specialPredictions.leagueId, league.id)),
+        db
+          .select()
+          .from(finalSettlementAwards)
+          .where(eq(finalSettlementAwards.leagueId, league.id)),
         db
           .select({
             userId: leagueMembers.userId,
@@ -1267,6 +1375,14 @@ export async function getPlayerProfileData(
       dbMatches,
       dbPredictions,
       memberRows,
+    );
+    const finalAwardCentsByEntry = sumFinalAwardsByEntry(
+      dbFinalAwards,
+      "amountCents",
+    );
+    const finalCorrectTipBonusByEntry = sumFinalAwardsByEntry(
+      dbFinalAwards,
+      "correctTipBonus",
     );
     const completedMatchCount = dbMatches.filter(
       (match) =>
@@ -1293,11 +1409,13 @@ export async function getPlayerProfileData(
               ? isExactPrediction(match, prediction)
               : false;
           }).length;
+          const entryKey = predictionEntryKey(member.userId, predictionRow);
           const winningsEuros =
-            winningsByEntry.get(
-              predictionEntryKey(member.userId, predictionRow),
-            ) ?? 0;
+            (winningsByEntry.get(entryKey) ?? 0) +
+            (finalAwardCentsByEntry.get(entryKey) ?? 0) / 100;
           const entryName = getEntryName(member, predictionRow);
+          const finalCorrectTipBonus =
+            finalCorrectTipBonusByEntry.get(entryKey) ?? 0;
 
           return {
             rank: 0,
@@ -1311,7 +1429,7 @@ export async function getPlayerProfileData(
             isAdditionalEntry: predictionRow === 2,
             points: winningsEuros,
             winningsEuros,
-            exact,
+            exact: exact + finalCorrectTipBonus,
             total: memberPredictions.length,
             isCurrentUser: member.userId === context.profileId,
           };

@@ -7,9 +7,11 @@ import { matches, profiles } from "@/db/schema";
 import {
   assertUniqueDisplayName,
   canManageBeforeStart,
+  getDefaultLeague,
   logAdminAction,
   requireAdminContext,
 } from "@/lib/admin";
+import { settleFinalAwards } from "@/lib/final-settlement";
 
 function getUserId(formData: FormData) {
   const userId = formData.get("userId");
@@ -343,4 +345,47 @@ export async function updateMatchCorrection(formData: FormData) {
   revalidatePath("/profile");
   revalidatePath(`/match/${matchId}`);
   adminRedirect("saved");
+}
+
+export async function settleTournamentFinalAwards() {
+  const context = await requireAdminContext();
+  const league = await getDefaultLeague();
+
+  if (!league) {
+    adminRedirect("league-missing");
+  }
+
+  try {
+    const settlement = await settleFinalAwards(context.db, league.id);
+
+    await logAdminAction({
+      action: "settle_final_awards",
+      actorUserId: context.profileId,
+      afterData: {
+        awardCount: settlement.awards.length,
+        championTeamCode: settlement.championTeamCode,
+        totalGoals: settlement.totalGoals,
+      },
+      entityId: league.id,
+      entityType: "league",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+
+    if (message === "final-settlement-unfinished-matches") {
+      adminRedirect("final-unfinished");
+    }
+
+    if (message === "final-settlement-missing-champion") {
+      adminRedirect("final-missing-champion");
+    }
+
+    throw error;
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath("/leaderboard");
+  revalidatePath("/profile");
+  adminRedirect("final-settled");
 }

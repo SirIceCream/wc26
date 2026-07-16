@@ -373,6 +373,31 @@ function GoalsReveal({
   });
   const goalGroups = groups.filter((group) => group.totalGoals !== null);
   const noTipGroup = groups.find((group) => group.totalGoals === null);
+  const tournamentComplete =
+    progress.totalMatches > 0 &&
+    progress.completedMatches >= progress.totalMatches;
+  const nearestGoalDistance = tournamentComplete && goalGroups.length
+    ? Math.min(
+        ...goalGroups.map((group) =>
+          Math.abs((group.totalGoals ?? 0) - progress.totalGoals),
+        ),
+      )
+    : null;
+  const winningGoalEntryCount =
+    nearestGoalDistance === null
+      ? 0
+      : goalGroups
+          .filter(
+            (group) =>
+              Math.abs((group.totalGoals ?? 0) - progress.totalGoals) ===
+              nearestGoalDistance,
+          )
+          .reduce((total, group) => total + group.entries.length, 0);
+  const finalGoalPayoutEuros = winningGoalEntryCount
+    ? floorToCents(
+        (entries.length * SPECIAL_PICK_STAKE_EUROS) / winningGoalEntryCount,
+      )
+    : null;
 
   return (
     <Surface>
@@ -419,7 +444,7 @@ function GoalsReveal({
                   </div>
                 </div>
 
-                {projection ? (
+                {projection && !tournamentComplete ? (
                   <div className="rounded-md bg-yellow-100 px-3 py-2 text-left sm:text-right">
                     <div className="text-[0.65rem] font-black uppercase text-yellow-800">
                       Hochrechnung
@@ -496,10 +521,24 @@ function GoalsReveal({
 
                 {goalGroups.map((group, index) => {
                   const leftSide = index % 2 === 0;
+                  const goalDistance =
+                    group.totalGoals === null
+                      ? Number.POSITIVE_INFINITY
+                      : Math.abs(group.totalGoals - progress.totalGoals);
+                  const isWinningGoalGroup =
+                    nearestGoalDistance !== null &&
+                    goalDistance === nearestGoalDistance;
                   const isImpossible =
-                    group.totalGoals !== null && group.totalGoals < progress.totalGoals;
+                    group.totalGoals !== null &&
+                    (tournamentComplete
+                      ? !isWinningGoalGroup
+                      : group.totalGoals < progress.totalGoals);
                   const isCurrentGoalCount = group.totalGoals === progress.totalGoals;
                   const isOwnPrediction = hasCurrentUserEntry(group.entries);
+                  const displayedWinEuros =
+                    tournamentComplete && isWinningGoalGroup
+                      ? finalGoalPayoutEuros
+                      : group.possibleWinEuros;
 
                   return (
                     <div
@@ -512,6 +551,8 @@ function GoalsReveal({
                             "rounded-lg border p-3",
                             isImpossible
                               ? "border-zinc-200 bg-zinc-50 opacity-70"
+                              : isWinningGoalGroup
+                                ? "border-emerald-400 bg-emerald-50 shadow-sm"
                               : isOwnPrediction
                                 ? "border-emerald-400 bg-emerald-50 shadow-sm"
                               : isCurrentGoalCount
@@ -540,16 +581,21 @@ function GoalsReveal({
                               <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-black text-zinc-500">
                                 Nicht mehr möglich
                               </span>
-                            ) : typeof group.possibleWinEuros === "number" ? (
+                            ) : typeof displayedWinEuros === "number" ? (
                               <span
                                 className={cn(
                                   "rounded-md px-2 py-1 text-xs font-black",
-                                  isCurrentGoalCount
+                                  isCurrentGoalCount || isWinningGoalGroup
                                     ? "bg-emerald-100 text-emerald-900"
                                     : "bg-yellow-100 text-yellow-950",
                                 )}
                               >
-                                {formatEuro(group.possibleWinEuros)}
+                                {formatEuro(displayedWinEuros)}
+                              </span>
+                            ) : null}
+                            {isWinningGoalGroup && tournamentComplete ? (
+                              <span className="rounded-md bg-emerald-100 px-2 py-1 text-xs font-black text-emerald-900">
+                                Gewinnt
                               </span>
                             ) : null}
                             {isCurrentGoalCount ? (

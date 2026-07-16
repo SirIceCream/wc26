@@ -7,7 +7,11 @@ import { MatchList } from "@/components/app/match-card";
 import { SectionTitle, Surface, TeamFlag } from "@/components/app/primitives";
 import { SpecialPickCard } from "@/components/app/special-pick-card";
 import { TournamentProgressCard } from "@/components/app/tournament-progress";
-import { getAppData } from "@/lib/app-data";
+import {
+  getAppData,
+  type FinalAwardKind,
+  type TournamentFinalAward,
+} from "@/lib/app-data";
 import { formatViennaMatchTime } from "@/lib/time";
 import {
   getStageLabel,
@@ -44,6 +48,109 @@ function getOwnPredictionLabels(match: Match) {
   }
 
   return entries;
+}
+
+function formatAwardNames(awards: TournamentFinalAward[]) {
+  if (!awards.length) return "Noch offen";
+
+  return awards.map((award) => award.entryName).join(", ");
+}
+
+function formatFinalAwardAmount(awards: TournamentFinalAward[]) {
+  const total = awards.reduce((sum, award) => sum + award.amountEuros, 0);
+
+  return formatEuro(total);
+}
+
+function finalAwardsByType(
+  awards: TournamentFinalAward[],
+  awardType: FinalAwardKind,
+) {
+  return awards.filter((award) => award.awardType === awardType);
+}
+
+function FinalTournamentCard({
+  awards,
+  leaderboardWinnerName,
+  totalGoals,
+}: {
+  awards: TournamentFinalAward[];
+  leaderboardWinnerName: string;
+  totalGoals: number;
+}) {
+  const championAwards = finalAwardsByType(awards, "champion");
+  const goalAwards = finalAwardsByType(awards, "total_goals");
+  const luckyLoserAwards = finalAwardsByType(awards, "lucky_loser");
+
+  return (
+    <Surface className="border-2 border-emerald-200 bg-emerald-50 p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <span className="rounded-md bg-emerald-800 px-2 py-1 text-xs font-black uppercase text-white">
+            Turnier beendet
+          </span>
+          <h2 className="mt-3 text-2xl font-black text-zinc-950">
+            Danke fürs Mitspielen!
+          </h2>
+          <p className="mt-2 text-sm font-semibold text-zinc-600">
+            Wir sehen uns in zwei Jahren wieder. Die finalen Statistiken stehen
+            in der Rangliste.
+          </p>
+        </div>
+        <Link
+          className="rounded-lg bg-zinc-950 px-4 py-3 text-center text-sm font-black text-white hover:bg-zinc-800"
+          href="/leaderboard"
+        >
+          Zur Rangliste
+        </Link>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg bg-white px-3 py-3">
+          <div className="text-[0.65rem] font-black uppercase text-zinc-500">
+            Rangliste
+          </div>
+          <div className="mt-1 text-sm font-black text-zinc-950">
+            {leaderboardWinnerName}
+          </div>
+        </div>
+        <div className="rounded-lg bg-white px-3 py-3">
+          <div className="text-[0.65rem] font-black uppercase text-zinc-500">
+            Tore gesamt
+          </div>
+          <div className="mt-1 text-sm font-black text-zinc-950">
+            {totalGoals}
+          </div>
+        </div>
+        <div className="rounded-lg bg-white px-3 py-3">
+          <div className="text-[0.65rem] font-black uppercase text-zinc-500">
+            Weltmeisterwette
+          </div>
+          <div className="mt-1 text-sm font-black text-zinc-950">
+            {formatAwardNames(championAwards)} ·{" "}
+            {formatFinalAwardAmount(championAwards)}
+          </div>
+        </div>
+        <div className="rounded-lg bg-white px-3 py-3">
+          <div className="text-[0.65rem] font-black uppercase text-zinc-500">
+            Torwette
+          </div>
+          <div className="mt-1 text-sm font-black text-zinc-950">
+            {formatAwardNames(goalAwards)} · {formatFinalAwardAmount(goalAwards)}
+          </div>
+        </div>
+        <div className="rounded-lg bg-white px-3 py-3 sm:col-span-2">
+          <div className="text-[0.65rem] font-black uppercase text-zinc-500">
+            Lucky-Looser Jackpot
+          </div>
+          <div className="mt-1 text-sm font-black text-zinc-950">
+            {formatAwardNames(luckyLoserAwards)} ·{" "}
+            {formatFinalAwardAmount(luckyLoserAwards)}
+          </div>
+        </div>
+      </div>
+    </Surface>
+  );
 }
 
 function FeaturedMatchCard({
@@ -224,6 +331,7 @@ export default async function Home() {
       : `${data.missedPredictionCount} verpasste Tipps`;
   const primarySpecialPrediction = data.specialPredictions[1];
   const specialPicksOpen = new Date(data.specialPickDeadlineAt) > new Date();
+  const finalSummary = data.finalSummary;
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:grid lg:grid-cols-[1fr_22rem] lg:py-8">
@@ -237,7 +345,13 @@ export default async function Home() {
               Servus {firstName}
             </h1>
           </div>
-          {featuredMatches.length ? (
+          {finalSummary ? (
+            <FinalTournamentCard
+              awards={finalSummary.awards}
+              leaderboardWinnerName={finalSummary.leaderboardWinner?.name ?? "Noch offen"}
+              totalGoals={finalSummary.totalGoals}
+            />
+          ) : featuredMatches.length ? (
             <div
               className={cn(
                 "grid gap-4",

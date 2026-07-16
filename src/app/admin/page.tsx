@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import {
   deleteTestProfile,
   resetUserOnboarding,
+  settleTournamentFinalAwards,
   updateMatchCorrection,
   updateUserAdminRole,
   updateUserDisplayName,
@@ -19,6 +20,10 @@ import {
 
 const messages: Record<string, string> = {
   "invalid-input": "Eingabe konnte nicht verarbeitet werden.",
+  "final-missing-champion": "Der Weltmeister konnte nicht bestimmt werden.",
+  "final-settled": "Finale Auswertung gespeichert.",
+  "final-unfinished": "Finale Auswertung ist erst möglich, wenn alle Spiele erledigt sind.",
+  "league-missing": "Die Liga wurde nicht gefunden.",
   locked: "Diese Aktion ist nach Turnierstart gesperrt.",
   "match-missing": "Das Spiel wurde nicht gefunden.",
   "name-taken": "Dieser Anzeigename ist bereits vergeben.",
@@ -302,6 +307,41 @@ function MatchCorrectionSection({
   );
 }
 
+function FinalSettlementSection({
+  awardCount,
+}: {
+  awardCount: number;
+}) {
+  const settled = awardCount > 0;
+
+  return (
+    <Surface className="mb-6 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h2 className="text-sm font-bold uppercase text-zinc-500">
+            Finale Auswertung
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm font-semibold text-zinc-500">
+            Berechnet Weltmeisterwette, Torwette und Lucky-Looser Jackpot für
+            die Rangliste. Die Aktion kann nach Ergebnis-Korrekturen erneut
+            ausgeführt werden.
+          </p>
+          <div className="mt-3">
+            <StatusChip kind={settled ? "hit" : "locked"}>
+              {settled ? `${awardCount} Awards gespeichert` : "Noch nicht gespeichert"}
+            </StatusChip>
+          </div>
+        </div>
+        <form action={settleTournamentFinalAwards}>
+          <button className="h-11 rounded-lg bg-emerald-800 px-4 text-sm font-black text-white hover:bg-emerald-900">
+            Finale Auswertung speichern
+          </button>
+        </form>
+      </div>
+    </Surface>
+  );
+}
+
 function AdminUserCard({
   canManageBeforeStart,
   currentUserId,
@@ -532,6 +572,8 @@ export default async function AdminPage({
         matches={data.matches}
         syncLog={data.providerSyncLog}
       />
+
+      <FinalSettlementSection awardCount={data.finalSettlementAwardCount} />
 
       <AdminUserSection
         canManageBeforeStart={data.canManageBeforeStart}

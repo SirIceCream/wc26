@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getDb, isDatabaseConfigured } from "@/db";
 import {
   adminAuditLog,
+  finalSettlementAwards,
   leagueMembers,
   leagues,
   matches,
@@ -74,6 +75,7 @@ export type AdminDashboardData = {
   currentUserId: string;
   matches: AdminMatchCorrectionRow[];
   providerSyncLog: AdminProviderSyncLogRow | null;
+  finalSettlementAwardCount: number;
   users: AdminUserRow[];
   totals: {
     admins: number;
@@ -161,6 +163,7 @@ export async function getAdminDashboardData() {
     memberRows,
     predictionRows,
     specialRows,
+    finalAwardRows,
     matchRows,
     syncLogRows,
   ] =
@@ -180,6 +183,12 @@ export async function getAdminDashboardData() {
             .select()
             .from(specialPredictions)
             .where(eq(specialPredictions.leagueId, league.id))
+        : [],
+      league
+        ? db
+            .select()
+            .from(finalSettlementAwards)
+            .where(eq(finalSettlementAwards.leagueId, league.id))
         : [],
       db
         .select()
@@ -249,6 +258,7 @@ export async function getAdminDashboardData() {
   return {
     canManageBeforeStart: canManageBeforeStart(),
     currentUserId: context.profileId,
+    finalSettlementAwardCount: finalAwardRows.length,
     matches: matchRows.map((match) => ({
       id: match.id,
       adminNote: match.adminNote,

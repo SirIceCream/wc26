@@ -99,6 +99,13 @@
       "when": 1782320223352,
       "tag": "0013_add_live_injury_time",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784212800000,
+      "tag": "0014_add_final_settlement_awards",
+      "breakpoints": true
     }
   ]
 }

@@ -92,7 +92,11 @@ function getMatchPhase(match: Match): MatchPhase {
     return KNOCKOUT_PHASES[3];
   }
 
-  if (stage.includes("third") || stage.includes("platz")) {
+  if (
+    stage.includes("third") ||
+    stage.includes("platz") ||
+    stage.includes("bronze")
+  ) {
     return KNOCKOUT_PHASES[4];
   }
 

@@ -362,3 +362,57 @@ export const specialPredictions = pgTable(
     }).onDelete("cascade"),
   ],
 );
+
+export const finalSettlementAwards = pgTable(
+  "final_settlement_awards",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    leagueId: uuid("league_id")
+      .notNull()
+      .references(() => leagues.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    predictionRow: integer("prediction_row").default(1).notNull(),
+    awardType: text("award_type").notNull(),
+    amountCents: integer("amount_cents").default(0).notNull(),
+    correctTipBonus: integer("correct_tip_bonus").default(0).notNull(),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("final_settlement_awards_unique").on(
+      table.leagueId,
+      table.userId,
+      table.predictionRow,
+      table.awardType,
+    ),
+    index("final_settlement_awards_league_id_idx").on(table.leagueId),
+    check(
+      "final_settlement_awards_prediction_row_check",
+      sql`${table.predictionRow} in (1, 2)`,
+    ),
+    check(
+      "final_settlement_awards_type_check",
+      sql`${table.awardType} in ('champion', 'total_goals', 'lucky_loser')`,
+    ),
+    check(
+      "final_settlement_awards_amount_cents_check",
+      sql`${table.amountCents} >= 0`,
+    ),
+    check(
+      "final_settlement_awards_correct_tip_bonus_check",
+      sql`${table.correctTipBonus} >= 0`,
+    ),
+    foreignKey({
+      name: "final_settlement_awards_league_user_membership_fk",
+      columns: [table.leagueId, table.userId],
+      foreignColumns: [leagueMembers.leagueId, leagueMembers.userId],
+    }).onDelete("cascade"),
+  ],
+);
