@@ -187,7 +187,8 @@ function buildGoalProjection({
 }): GoalProjection | null {
   if (
     progress.completedMatches <= 0 ||
-    progress.totalMatches <= 0
+    progress.totalMatches <= 0 ||
+    progress.completedMatches >= progress.totalMatches
   ) {
     return null;
   }
