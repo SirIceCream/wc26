@@ -1117,7 +1117,7 @@ async function loadDatabaseData(context: UserContext): Promise<AppData | null> {
   ).length;
   const tournamentGoalCount = countTournamentGoals(dbMatches);
   const tournamentComplete =
-    dbMatches.length > 0 && completedMatchCount === dbMatches.length;
+    dbMatches.length > 0 && dbMatches.every((match) => inferStatus(match) === "done");
 
   const leaderboardRows = memberRows
     .flatMap((member) => {
