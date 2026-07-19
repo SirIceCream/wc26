@@ -79,9 +79,22 @@ function getMatchWinnerTeamCode(match: MatchRow) {
 }
 
 function isFinalMatch(match: MatchRow) {
-  const stage = match.stage.toLowerCase();
+  const stage = match.stage.trim().toLowerCase();
 
-  return stage.includes("final") && !stage.includes("third");
+  // Do not use `includes("final")`: stages like "Quarter-finals" and
+  // "Semi-finals" contain that substring and can incorrectly decide the
+  // champion before the actual final is evaluated.
+  return stage === "final" || stage === "finale";
+}
+
+function getFinalMatch(matchRows: MatchRow[]) {
+  return [...matchRows]
+    .filter(isFinalMatch)
+    .sort((a, b) => {
+      const kickoffDiff = b.kickoffAt.getTime() - a.kickoffAt.getTime();
+
+      return kickoffDiff || (b.gameId ?? 0) - (a.gameId ?? 0);
+    })[0];
 }
 
 function buildFinalAwards({
@@ -108,7 +121,7 @@ function buildFinalAwards({
     throw new Error("final-settlement-unfinished-matches");
   }
 
-  const finalMatch = matchRows.find(isFinalMatch);
+  const finalMatch = getFinalMatch(matchRows);
   const championTeamCode = finalMatch ? getMatchWinnerTeamCode(finalMatch) : null;
 
   if (!championTeamCode) {
