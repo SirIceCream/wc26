@@ -12,6 +12,7 @@ export const FOOTBALL_DATA_PROVIDER = "football-data";
 const FOOTBALL_DATA_LOCK_KEY = 260260;
 const ACTIVE_WINDOW_BEFORE_MS = 30 * 60 * 1000;
 const ACTIVE_WINDOW_AFTER_MS = 4 * 60 * 60 * 1000;
+const LAST_MATCH_GRACE_WINDOW_AFTER_MS = 12 * 60 * 60 * 1000;
 const MATCH_ID_CHUNK_SIZE = 50;
 
 const TEAM_CODE_ALIASES: Record<string, string> = {
@@ -375,13 +376,26 @@ async function getActiveMappedMatches(db: Db, now: Date) {
     .where(sql`${matches.footballDataMatchId} is not null`);
   const from = now.getTime() - ACTIVE_WINDOW_BEFORE_MS;
   const to = now.getTime() + ACTIVE_WINDOW_AFTER_MS;
+  const lastMappedMatch = rows.reduce<(typeof rows)[number] | null>(
+    (latest, match) =>
+      !latest || match.kickoffAt.getTime() > latest.kickoffAt.getTime()
+        ? match
+        : latest,
+    null,
+  );
 
   return rows.filter((match) => {
     const kickoff = match.kickoffAt.getTime();
+    const isLastMappedMatchInGraceWindow =
+      lastMappedMatch?.footballDataMatchId === match.footballDataMatchId &&
+      kickoff <= now.getTime() &&
+      kickoff >= now.getTime() - LAST_MATCH_GRACE_WINDOW_AFTER_MS;
 
     return (
       match.footballDataMatchId !== null &&
-      ((kickoff >= from && kickoff <= to) || match.status === "live")
+      ((kickoff >= from && kickoff <= to) ||
+        match.status === "live" ||
+        isLastMappedMatchInGraceWindow)
     );
   });
 }
